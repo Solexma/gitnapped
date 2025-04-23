@@ -1,0 +1,16 @@
+[package]
+name = "gitnapped"
+version = "0.1.0"
+edition = "2021"
+authors = ["Marco Orlandin <marco@solexma.com>"]
+description = "Find out why you didn't sleep – a Git commit timeline analyzer"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4.5.37", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_yaml = "0.9.34"
+chrono = "0.4.40"
+colored = "3.0.0"
+askama = "0.14.0"
+tera = "1.20.0"
