@@ -371,6 +371,7 @@ dependencies = [
  "chrono",
  "clap",
  "colored",
+ "regex",
  "serde",
  "serde_yaml",
  "tera",

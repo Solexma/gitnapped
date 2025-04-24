@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::Deserialize;
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -17,9 +17,24 @@ pub struct RepoStats {
     pub file_types: HashMap<String, usize>,
 }
 
+#[derive(Debug, Clone)]
+pub struct RepoInfo {
+    pub path: String,
+    pub group: Option<String>,
+    pub vanity_name: String,
+}
+
 #[derive(Debug, Default)]
 pub struct CategoryStats {
     pub name: String,
     pub repos: Vec<(String, RepoStats)>,
     pub total: RepoStats,
-} 
+}
+
+#[derive(Debug, Default)]
+pub struct ProjectStats {
+    pub name: String,
+    pub group: Option<String>,
+    pub repos: Vec<String>,
+    pub stats: RepoStats,
+}
