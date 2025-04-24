@@ -35,7 +35,7 @@ pub fn log(message: &str) {
         }
     }
 }
-/// Parses a relative time period string like "6M", "2Y", "5D", "12H" and returns a DateTime
+// Parses a relative time period string like "6M", "2Y", "5D", "12H" and returns a DateTime
 pub fn parse_period(period: &str) -> Option<DateTime<Utc>> {
     let re = Regex::new(r"^(\d+)([YMWDH])$").unwrap();
 

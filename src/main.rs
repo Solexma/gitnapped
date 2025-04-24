@@ -206,10 +206,10 @@ fn main() {
     // Parse repository info to use for both categories and projects
     let repo_infos = parse_repos_from_config(&config);
 
-    // Crea una mappa di corrispondenza tra stringhe originali e percorsi puliti
+    // Create a mapping between original strings and clean paths
     let repo_path_map = create_repo_path_map(&config);
 
-    // Analizza tutte le categorie
+    // Analyze all categories
     let (categories, all_repo_stats) = analyze_all_categories(
         &config,
         &repo_path_map,

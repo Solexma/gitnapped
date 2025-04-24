@@ -2,7 +2,7 @@ use crate::models::RepoInfo;
 use crate::utils::debug;
 use std::collections::HashMap;
 
-/// Parse a repo string in the format: "path [label1][label2]" or "path [label]"
+// Parse a repo string in the format: "path [label1][label2]" or "path [label]"
 pub fn parse_repo_string(input: &str) -> RepoInfo {
     debug(&format!("Parsing repo string: '{}'", input));
 
@@ -46,7 +46,7 @@ pub fn parse_repo_string(input: &str) -> RepoInfo {
     }
 }
 
-/// Utility function to group repositories by vanity name
+// Utility function to group repositories by vanity name
 pub fn group_repos_by_vanity(repos: &[RepoInfo]) -> HashMap<String, Vec<RepoInfo>> {
     let mut grouped = HashMap::new();
 

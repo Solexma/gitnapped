@@ -6,7 +6,7 @@ use colored::*;
 use std::collections::HashMap;
 use std::process::Command;
 
-/// Analizza un singolo repository e restituisce le statistiche
+// Analyzes a single repository and returns statistics
 pub fn analyze_repo(
     repo: &str,
     author: &Option<String>,
@@ -63,7 +63,7 @@ pub fn analyze_repo(
 
     stats.commit_count = commits.len();
 
-    // Mostra informazioni sui commit trovati
+    // Display information about found commits
     debug(&format!(
         "Found {} commits in repository {}",
         commits.len(),
@@ -173,7 +173,7 @@ pub fn analyze_repo(
     stats
 }
 
-/// Crea una mappa di corrispondenza tra percorsi originali del config file e percorsi puliti
+// Creates a mapping between original config file paths and cleaned paths
 pub fn create_repo_path_map(config: &Config) -> HashMap<String, String> {
     let mut repo_path_map: HashMap<String, String> = HashMap::new();
 
@@ -187,7 +187,7 @@ pub fn create_repo_path_map(config: &Config) -> HashMap<String, String> {
     repo_path_map
 }
 
-/// Analizza tutte le categorie dai dati di configurazione
+// Analyzes all categories from configuration data
 pub fn analyze_all_categories(
     config: &Config,
     repo_path_map: &HashMap<String, String>,
@@ -211,10 +211,10 @@ pub fn analyze_all_categories(
         let mut category_repo_stats = Vec::new();
 
         for repo_str in repos {
-            // Ottieni il percorso analizzato per questo repository
+            // Get the parsed path for this repository
             let repo_path = repo_path_map.get(repo_str).unwrap_or(repo_str);
 
-            // Controlla se abbiamo già analizzato questo repo
+            // Check if we've already analyzed this repo
             let repo_stats = analyze_repo(
                 repo_path,
                 author_filter,
@@ -224,7 +224,7 @@ pub fn analyze_all_categories(
                 show_filetypes,
             );
 
-            // Salta i repository inattivi se è impostato il flag active-only
+            // Skip inactive repositories if active-only flag is set
             if active_only && repo_stats.commit_count == 0 {
                 continue;
             }
@@ -236,12 +236,12 @@ pub fn analyze_all_categories(
             all_repo_stats.push((repo_path.clone(), repo_stats));
         }
 
-        // Aggrega le statistiche per questa categoria
+        // Aggregate statistics for this category
         category_stats.total = aggregate_stats(&category_repo_stats);
         categories.push(category_stats);
     }
 
-    // Filtra solo i repository attivi se necessario
+    // Filter only active repositories if needed
     if active_only {
         all_repo_stats.retain(|(_, stats)| stats.commit_count > 0);
     }
@@ -249,7 +249,7 @@ pub fn analyze_all_categories(
     (categories, all_repo_stats)
 }
 
-/// Analizza progetti raggruppando i repository per nome vanity
+// Analyzes projects by grouping repositories by vanity name
 pub fn analyze_all_projects(
     repo_infos: &[RepoInfo],
     repo_stats_map: &HashMap<String, RepoStats>,
@@ -277,7 +277,7 @@ pub fn analyze_all_projects(
             let repo_path = &repo_info.path;
             project_stats.repos.push(repo_path.clone());
 
-            // Usa le statistiche già calcolate per questo repo o analizzalo
+            // Use already calculated statistics for this repo or analyze it
             let repo_stats = if let Some(stats) = repo_stats_map.get(repo_path) {
                 stats.clone()
             } else {
@@ -291,21 +291,21 @@ pub fn analyze_all_projects(
                 )
             };
 
-            // Salta i repository inattivi se è impostato il flag active-only
+            // Skip inactive repositories if active-only flag is set
             if active_only && repo_stats.commit_count == 0 {
                 continue;
             }
 
             project_repo_stats.push(repo_stats);
 
-            // Debug per il percorso del repository
+            // Debug for repository path
             debug(&format!(
-                "Repository path: '{}', path per git: '{}'",
+                "Repository path: '{}', path for git: '{}'",
                 repo_path, repo_path
             ));
         }
 
-        // Aggrega le statistiche per questo progetto
+        // Aggregate statistics for this project
         project_stats.stats = aggregate_stats(&project_repo_stats);
         project_list.push(project_stats);
     }

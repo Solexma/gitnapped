@@ -112,7 +112,7 @@ pub fn print_projects_summary(
 ) {
     log(&format!("\n{}", "Projects Statistics:".bright_green()));
 
-    // Raggruppa per group se disponibile
+    // Group by group if available
     let mut by_group: HashMap<Option<String>, Vec<&ProjectStats>> = HashMap::new();
     for project in projects {
         by_group
@@ -121,7 +121,7 @@ pub fn print_projects_summary(
             .push(project);
     }
 
-    // Per ogni gruppo (o nessun gruppo)
+    // For each group (or no group)
     for (group, group_projects) in by_group {
         if let Some(group_name) = &group {
             log(&format!(
@@ -133,7 +133,7 @@ pub fn print_projects_summary(
             log(&format!("\n{}", "Ungrouped Projects:".bright_yellow()));
         }
 
-        // Ordina i progetti nel gruppo in base al criterio
+        // Sort projects in group based on criterion
         let mut sorted_projects = group_projects.clone();
         match sort_by {
             "commits" => {
@@ -144,7 +144,7 @@ pub fn print_projects_summary(
             _ => {}
         }
 
-        // Stampa le statistiche per ogni progetto
+        // Print statistics for each project
         for (i, project) in sorted_projects.iter().enumerate() {
             log(&format!(
                 "{}. {} - {} commits, {} files, {} lines (from {} repos)",
@@ -156,14 +156,14 @@ pub fn print_projects_summary(
                 project.repos.len().to_string().yellow()
             ));
 
-            // Se richiesto, mostra i repository inclusi in questo progetto
+            // If requested, show the repositories included in this project
             if show_repo_details {
                 for repo_path in &project.repos {
                     log(&format!("   • {}", repo_path));
                 }
             }
 
-            // Se richiesto, mostra i tipi di file
+            // If requested, show the file types
             if show_filetypes && !project.stats.file_types.is_empty() {
                 log(&format!("   {}", "File types:".bright_magenta()));
                 let mut types: Vec<(String, usize)> = project
