@@ -4,7 +4,7 @@
 
 Gitnapped is a command-line tool that analyzes your Git commit history across multiple repositories. It provides insights into your coding patterns, helping you understand where your time is spent across projects.
 
-## What Does It Mean to Get Gitnapped?
+## What does it mean to get Gitnapped?
 
 Picture this: it’s 5 PM, you’re ready to call it a day, but then you think, “Just one more commit…” Next thing you know, it’s 2 AM, and you’re knee-deep in code. That’s being gitnapped! Gitnapped (the tool) helps you spot these moments by analyzing your commit history—showing you when Git’s magic stole your sleep.
 
