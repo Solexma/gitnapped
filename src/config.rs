@@ -1,37 +1,44 @@
 use crate::models::{Config, RepoInfo};
 use crate::parser::parse_repo_string;
+use colored::*;
 use std::fs;
 use std::path::Path;
-use colored::*;
 use std::process;
 
 pub fn load_config(path: &str) -> Config {
     if !Path::new(path).exists() {
-        eprintln!("{} '{}' {}", 
+        eprintln!(
+            "{} '{}' {}",
             "Error:".bright_red(),
             path.yellow(),
-            "file not found. Please create a configuration file or specify a valid path.".bright_red());
+            "file not found. Please create a configuration file or specify a valid path."
+                .bright_red()
+        );
         process::exit(1);
     }
-    
+
     let contents = match fs::read_to_string(path) {
         Ok(content) => content,
         Err(err) => {
-            eprintln!("{} '{}': {}", 
+            eprintln!(
+                "{} '{}': {}",
                 "Error reading config file".bright_red(),
                 path.yellow(),
-                err.to_string().bright_red());
+                err.to_string().bright_red()
+            );
             process::exit(1);
         }
     };
-    
+
     match serde_yaml::from_str(&contents) {
         Ok(config) => config,
         Err(err) => {
-            eprintln!("{} '{}': {}", 
+            eprintln!(
+                "{} '{}': {}",
                 "Invalid YAML format in config file".bright_red(),
                 path.yellow(),
-                err.to_string().bright_red());
+                err.to_string().bright_red()
+            );
             process::exit(1);
         }
     }
