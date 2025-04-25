@@ -1,0 +1,24 @@
+{%- if project_name -%}
+# {{ project_name }}
+{%- endif -%}
+{%- if badge_version %}
+![Version](https://img.shields.io/badge/version-{{ version }}-blue.svg)
+{%- endif %}
+{%- if description %}
+
+{{ description }}
+{%- endif %}
+{%- if overview %}
+
+## Overview
+
+{{ overview }}
+{%- endif %}
+{%- if screenshot %}
+
+![Screenshot]({{ screenshot }})
+{%- endif %}
+{%- if demo %}
+
+![Demo]({{ demo }})
+{%- endif %}

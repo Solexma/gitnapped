@@ -1,0 +1,6 @@
+{%- if setup_ci %}
+
+## Continuous Integration
+
+This project includes a basic CI configuration.
+{%- endif -%}

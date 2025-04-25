@@ -1,0 +1,14 @@
+{%- if authors and authors | length > 0 %}
+{%- if authors | length == 1 -%}
+{{ newline() }}
+## Author/Maintainer
+
+{{ authors[0].name }} <{{ authors[0].email }}>
+{%- else %}
+
+## Authors/Maintainers
+{% for author in authors %}
+- {{ author.name }} ({{ author.email }})
+{%- endfor %}
+{%- endif %}
+{%- endif %}

@@ -1,0 +1,7 @@
+{%- include "header.tera" %}
+{%- include "features.tera" %}
+{%- include "getting_started.tera" %}
+{%- include "license.tera" %}
+{%- include "contributors.tera" %}
+{%- include "authors.tera" %}
+{%- include "continuous_integration.tera" %}{{ newline() }}

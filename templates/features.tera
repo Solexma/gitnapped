@@ -1,0 +1,8 @@
+{%- if features and features | length > 0 %}
+
+## Features
+
+{% for feature in features -%}
+- {{ feature }}
+{% endfor -%}
+{%- endif %}

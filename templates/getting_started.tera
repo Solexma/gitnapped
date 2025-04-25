@@ -1,0 +1,28 @@
+{%- if getting_started %}
+
+## Getting Started
+
+{%- if pre_requisites and pre_requisites | length > 0 %}
+### Prerequisites
+
+{% for pre_requisite in pre_requisites -%}
+- {{ pre_requisite }}
+{% endfor -%}
+{%- endif %}
+{%- if installation and installation | length > 0 %}
+
+### Installation
+
+{% for step in installation -%}
+- {{ step }}
+{% endfor -%}
+{%- endif %}
+{%- if usage and usage | length > 0 %}
+
+### Usage
+
+{% for example in usage -%}
+{{ example }}
+{% endfor -%}
+{%- endif %}
+{%- endif %}

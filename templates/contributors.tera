@@ -1,0 +1,8 @@
+{%- if contributors and contributors | length > 0 %}
+
+## Contributors
+
+{% for contributor in contributors -%}
+- {{ contributor }}
+{% endfor -%}
+{%- endif %}

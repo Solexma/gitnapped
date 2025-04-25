@@ -1,0 +1,5 @@
+{%- if license %}
+## License
+
+Licensed under {{ license.name }}.
+{%- endif %}
