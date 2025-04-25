@@ -6,7 +6,7 @@ authors = ["Marco Orlandin <marco@solexma.com>"]
 description = "Find out why you didn't sleep – a Git commit timeline analyzer"
 license = "MIT"
 repository = "https://github.com/solexma/gitnapped"
-homepage = "https://gitnapped.dev"
+homepage = "https://site.gitnapped.dev"
 
 [dependencies]
 clap = { version = "4.5.37", features = ["derive"] }

@@ -1,2 +1,5 @@
 /target
 gitnapped.yaml
+/output
+.jekyll-cache
+_site

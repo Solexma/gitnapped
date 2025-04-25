@@ -22,7 +22,7 @@ Gitnapped is a command-line tool that analyzes your Git commit history across mu
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/gitnapped.git
+git clone https://github.com/Solexma/gitnapped.git
 cd gitnapped
 cargo build --release
 ```
