@@ -6,7 +6,7 @@ Gitnapped is a command-line tool that analyzes your Git commit history across mu
 
 ## What does it mean to get Gitnapped?
 
-Picture this: it’s 5 PM, you’re ready to call it a day, but then you think, “Just one more commit…” Next thing you know, it’s 2 AM, and you’re knee-deep in code. That’s being gitnapped! Gitnapped (the tool) helps you spot these moments by analyzing your commit history—showing you when Git’s magic stole your sleep.
+Picture this: it's 5 PM, you're ready to call it a day, but then you think, "Just one more commit…" Next thing you know, it's 2 AM, and you're knee-deep in code. That's being gitnapped! Gitnapped (the tool) helps you spot these moments by analyzing your commit history—showing you when Git's magic stole your sleep.
 
 > So, have you gitnapped yourself lately?
 
@@ -55,6 +55,9 @@ gitnapped --repo-details
 
 # Show only active repositories grouped by project
 gitnapped --active-only --projects
+
+# Analyze a specific directory without a config file
+gitnapped -d /path/to/repository
 ```
 
 ### Configuration
@@ -80,8 +83,9 @@ Please note that the **author name** will be used to filter the commits.
 
 ### Command Line Options
 
-```bash
+```console
 -c, --config <FILE>          Sets a custom config file
+-d, --dir <DIRECTORY>        Sets a directory to analyze (bypasses config file)
 -s, --since <DATE>           Start date for analysis (YYYY-MM-DD)
 -u, --until <DATE>           End date for analysis (YYYY-MM-DD)
 -p, --period <PERIOD>        Relative time period (e.g., 6M, 2Y, 5D, 12H)
@@ -105,9 +109,9 @@ Licensed under AGPL-3.0 license.
 
 ## Full disclosure
 
-Let’s be real.
+Let's be real.
 
-Gitnapped is a fancy wrapper for Git’s command-line magic. But that’s the point! It takes the heavy lifting out of analyzing your commit history, so you can see when you’ve been gitnapped by your code—those late-night commit sprees or weekend coding binges. Understand your coding patterns, reclaim your sleep, and maybe have a laugh along the way.
+Gitnapped is a fancy wrapper for Git's command-line magic. But that's the point! It takes the heavy lifting out of analyzing your commit history, so you can see when you've been gitnapped by your code—those late-night commit sprees or weekend coding binges. Understand your coding patterns, reclaim your sleep, and maybe have a laugh along the way.
 
 ## Author/Maintainer
 
