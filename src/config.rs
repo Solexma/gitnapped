@@ -4,6 +4,18 @@ use colored::*;
 use std::fs;
 use std::path::Path;
 use std::process;
+use std::collections::HashMap;
+
+pub fn push_to_empty_config(dir: &str) -> Config {
+    let mut repos = HashMap::new();
+    let dir_to_string = format!("{} [Uncategorized][Unnamed]", dir);
+    repos.insert("Uncategorized".to_string(), vec![dir_to_string]);
+
+    Config {
+        author: None,
+        repos: repos,
+    }
+}
 
 pub fn load_config(path: &str) -> Config {
     if !Path::new(path).exists() {
@@ -45,6 +57,11 @@ pub fn load_config(path: &str) -> Config {
 }
 
 pub fn parse_repos_from_config(config: &Config) -> Vec<RepoInfo> {
+    // On an empty config, we return an empty vector
+    if config.repos.is_empty() {
+        return Vec::new();
+    }
+
     let mut result = Vec::new();
 
     for (_, repos) in &config.repos {

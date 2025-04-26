@@ -11,7 +11,7 @@ use colored::*;
 use std::collections::HashMap;
 
 use analyzer::{analyze_all_categories, analyze_all_projects, create_repo_path_map};
-use config::{load_config, parse_repos_from_config};
+use config::{load_config, push_to_empty_config, parse_repos_from_config};
 use display::{print_category_summary, print_projects_summary, print_total_stats};
 use models::RepoStats;
 use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, log, parse_period};
@@ -26,6 +26,11 @@ fn main() {
             .long("config")
             .value_name("FILE")
             .help("Sets a custom config file, if not provided, the app will look for a 'gitnapped.yaml'"))
+        .arg(Arg::new("dir")
+            .short('d')
+            .long("dir")
+            .value_name("DIRECTORY")
+            .help("Sets a custom directory to analyze, if not provided, the app will look for a 'gitnapped.yaml' in the current directory"))
         .arg(Arg::new("since")
             .short('s')
             .long("since")
@@ -91,15 +96,85 @@ fn main() {
             .action(clap::ArgAction::SetTrue))
         .get_matches();
 
-    let default_config = String::from("gitnapped.yaml");
-    let config_path = matches
-        .get_one::<String>("config")
-        .unwrap_or(&default_config);
-    let config = load_config(config_path);
 
-    // Handle time period parameter
+    let default_dir = String::from("");
+    let dir = matches.get_one::<String>("dir").unwrap_or(&default_dir);
     let since: String;
     let until: String;
+    let active_only = matches.get_flag("active-only");
+    let default_sort = String::from("commits");
+    let sort_by = matches
+        .get_one::<String>("sort-by")
+        .unwrap_or(&default_sort);
+    let by_categories = matches.get_flag("categories");
+    let by_projects = matches.get_flag("projects");
+    let show_repo_details = matches.get_flag("repo-details");
+    let show_filetypes = matches.get_flag("filetypes");
+    let show_most_active_day = matches.get_flag("most-active-day");
+    let debug_mode = matches.get_flag("debug");
+    let silent_mode = matches.get_flag("silent");
+    
+    let mut mandatory_author = false; // An author is mandatory if a directory is provided
+    let mut bypass_config = false; // Config is bypassed if a directory is provided
+
+    init_debug_mode(debug_mode);
+    init_silent_mode(silent_mode);
+
+    // If a directory is provided, we need to 
+    if !dir.is_empty() {
+        debug(&format!("Using directory: {}", dir));
+        mandatory_author = true;
+        bypass_config = true;
+    }
+
+    // Initialize config variable outside of if/else blocks
+    let config = if !bypass_config {
+        let default_config = String::from("gitnapped.yaml");
+        let config_path = matches
+            .get_one::<String>("config")
+            .unwrap_or(&default_config);
+        load_config(config_path)
+    } else {
+        debug(&format!("Loading empty config"));
+        push_to_empty_config(&dir)
+    };
+
+    let config_author = config.author.clone();
+    let cli_author = matches.get_one::<String>("author").cloned();
+    let mut all_authors = matches.get_flag("all-authors");
+
+    if mandatory_author {
+        if cli_author.is_none() {
+            log(&format!(
+                "{}",
+                "Warning: No author provided, assuming all-authors mode".bright_yellow()
+            ));
+            all_authors = true;
+        }
+    }
+
+    // Priority: 1) all-authors flag, 2) author CLI arg, 3) config file author
+    let author_filter = if all_authors {
+        None // Don't filter by author, show commits from everyone
+    } else if let Some(a) = cli_author {
+        Some(a) // Use the author specified on the command line
+    } else {
+        config_author // Use the author from the config file (could be None)
+    };
+
+    // Display information about the author name being used as a filter
+    if let Some(a) = &author_filter {
+        log(&format!(
+            "{}: {}",
+            "Author filter".bright_yellow(),
+            a.green()
+        ));
+    } else {
+        log(&format!(
+            "{}",
+            "Showing commits from all authors".bright_yellow()
+        ));
+    }
 
     if let Some(period) = matches.get_one::<String>("period") {
         // Parse relative time period
@@ -151,22 +226,6 @@ fn main() {
             .unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
     }
 
-    let active_only = matches.get_flag("active-only");
-    let default_sort = String::from("commits");
-    let sort_by = matches
-        .get_one::<String>("sort-by")
-        .unwrap_or(&default_sort);
-    let by_categories = matches.get_flag("categories");
-    let by_projects = matches.get_flag("projects");
-    let show_repo_details = matches.get_flag("repo-details");
-    let show_filetypes = matches.get_flag("filetypes");
-    let show_most_active_day = matches.get_flag("most-active-day");
-    let silent_mode = matches.get_flag("silent");
-    let debug_mode = matches.get_flag("debug");
-
-    init_debug_mode(debug_mode);
-    init_silent_mode(silent_mode);
-
     log(&format!(
         "{} {} {} {}",
         "Analyzing repos from".bright_yellow(),
@@ -174,34 +233,6 @@ fn main() {
         "to".bright_yellow(),
         until.bright_cyan()
     ));
-
-    // Determine which author to use for filtering commits
-    let config_author = config.author.clone();
-    let cli_author = matches.get_one::<String>("author").cloned();
-    let all_authors = matches.get_flag("all-authors");
-
-    // Priority: 1) all-authors flag, 2) author CLI arg, 3) config file author
-    let author_filter = if all_authors {
-        None // Don't filter by author, show commits from everyone
-    } else if let Some(a) = cli_author {
-        Some(a) // Use the author specified on the command line
-    } else {
-        config_author // Use the author from the config file (could be None)
-    };
-
-    // Display information about the author name being used as a filter
-    if let Some(a) = &author_filter {
-        log(&format!(
-            "{}: {}",
-            "Author filter".bright_yellow(),
-            a.green()
-        ));
-    } else {
-        log(&format!(
-            "{}",
-            "Showing commits from all authors".bright_yellow()
-        ));
-    }
 
     // Parse repository info to use for both categories and projects
     let repo_infos = parse_repos_from_config(&config);
@@ -234,10 +265,10 @@ fn main() {
         .collect();
 
     // Aggregate stats for all repositories
-    let total_stats = aggregate_stats(&repo_stats_only);
+    let mut total_stats = aggregate_stats(&repo_stats_only);
 
     // Calculate the total number of active repositories
-    let total_active_repos = all_repo_stats
+    let mut total_active_repos = all_repo_stats
         .iter()
         .filter(|(_, stats)| stats.commit_count > 0)
         .count();
@@ -262,21 +293,12 @@ fn main() {
     // Print appropriate output based on flags
     if by_categories {
         print_category_summary(&categories, sort_by, show_filetypes);
-
-        // Print totals across all repos
-        print_total_stats(
-            &total_stats,
-            total_active_repos,
-            "Repositories",
-            show_filetypes,
-            show_most_active_day,
-        );
     } else if let Some(project_list) = &projects {
         // Print project statistics
         print_projects_summary(project_list, sort_by, show_filetypes, show_repo_details);
 
-        // Calculate and print overall stats
-        let total_active_projects = project_list
+        // Calculate overall stats for projects
+        total_active_repos = project_list
             .iter()
             .filter(|project| project.stats.commit_count > 0)
             .count();
@@ -288,16 +310,7 @@ fn main() {
             .collect();
 
         // Aggregate stats for all projects
-        let total_project_stats = aggregate_stats(&project_stats);
-
-        // Print totals across all projects
-        print_total_stats(
-            &total_project_stats,
-            total_active_projects,
-            "Projects",
-            show_filetypes,
-            true,
-        );
+        total_stats = aggregate_stats(&project_stats);
     } else {
         // Otherwise sort and print overall top repos
         if !all_repo_stats.is_empty() {
@@ -308,33 +321,41 @@ fn main() {
                 "lines" => sorted_repos.sort_by(|a, b| b.1.line_count.cmp(&a.1.line_count)),
                 _ => {}
             }
-
-            log(&format!(
-                "\n{} (sorted by {})",
-                "📊 Most Active Repositories".bright_green(),
-                sort_by
-            ));
-            for (i, (repo, stats)) in sorted_repos.iter().enumerate().take(5) {
-                if stats.commit_count > 0 || sort_by != "commits" {
-                    log(&format!(
-                        "{}. {} - {} commits, {} files, {} lines",
-                        (i + 1).to_string().bright_yellow(),
-                        repo.green(),
-                        stats.commit_count.to_string().cyan(),
-                        stats.file_count.to_string().blue(),
-                        stats.line_count.to_string().magenta()
-                    ));
+            if sorted_repos.len() > 1 {
+                log(&format!(
+                    "\n{} (sorted by {})",
+                    "Most Active Repositories".bright_green(),
+                    sort_by
+                ));
+                for (i, (repo, stats)) in sorted_repos.iter().enumerate().take(5) {
+                    if stats.commit_count > 0 || sort_by != "commits" {
+                        log(&format!(
+                            "{}. {} - {} commits, {} files, {} lines",
+                            (i + 1).to_string().bright_yellow(),
+                            repo.green(),
+                            stats.commit_count.to_string().cyan(),
+                            stats.file_count.to_string().blue(),
+                            stats.line_count.to_string().magenta()
+                        ));
+                    }
                 }
             }
         }
-
-        // Print totals across all repos using the helper function
-        print_total_stats(
-            &total_stats,
-            total_active_repos,
-            "Repositories",
-            show_filetypes,
-            true,
-        );
     }
+
+    // Determine what type of items we're summarizing
+    let item_type = if by_projects {
+        "Projects"
+    } else {
+        "Repositories"
+    };
+
+    // Print totals once at the end
+    print_total_stats(
+        &total_stats,
+        total_active_repos,
+        item_type,
+        show_filetypes,
+        show_most_active_day || (!by_categories && !by_projects),
+    );
 }
