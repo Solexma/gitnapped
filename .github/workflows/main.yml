@@ -33,7 +33,14 @@ jobs:
         run: cargo build --release --target ${{ matrix.target }}
       - name: Create tarball
         run: |
-          tar czf gitnapped-${{ matrix.target }}.tar.gz target/${{ matrix.target }}/release/gitnapped
+          # Create a temporary directory for the binary
+          mkdir -p temp_bin
+          # Copy the binary to the temp directory
+          cp target/${{ matrix.target }}/release/gitnapped temp_bin/
+          # Create the tarball from the temp directory
+          tar czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
+          # Clean up
+          rm -rf temp_bin
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
