@@ -22,10 +22,9 @@ jobs:
 
       - name: Clone homebrew-gitnapped tap
         run: |
-          git clone https://github.com/solexma/homebrew-gitnapped.git tap-repo
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git tap-repo
           cd tap-repo
 
-          # Aggiorna il file Formula
           sed -i "s|url \".*\"|url \"https://github.com/solexma/gitnapped/archive/refs/tags/${{ github.event.release.tag_name }}.tar.gz\"|" Formula/gitnapped.rb
           sed -i "s|sha256 \".*\"|sha256 \"${{ env.sha256 }}\"|" Formula/gitnapped.rb
           sed -i "s|version \".*\"|version \"${{ github.event.release.tag_name }}\"|" Formula/gitnapped.rb
