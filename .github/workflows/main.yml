@@ -18,7 +18,9 @@ jobs:
       - name: Calculate SHA256
         id: sha256
         run: |
-          echo "sha256=$(shasum -a 256 source.tar.gz | awk '{print $1}')" >> $GITHUB_ENV
+          sha=$(shasum -a 256 source.tar.gz | awk '{print $1}')
+          echo "sha256=$sha" >> $GITHUB_ENV
+          echo "Calculated SHA256: $sha"
 
       - name: Clone homebrew-gitnapped tap
         run: |
@@ -31,6 +33,12 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add Formula/gitnapped.rb
-          git commit -m "Update gitnapped.rb to version ${{ github.event.release.tag_name }}"
-          git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git HEAD:main
+
+          if git diff --cached --quiet; then
+            echo "No changes detected, skipping commit."
+          else
+            git commit -m "Update gitnapped.rb to version ${{ github.event.release.tag_name }}"
+            git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git HEAD:main
+          fi
