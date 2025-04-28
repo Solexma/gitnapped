@@ -1,6 +1,6 @@
 use crate::models::{CategoryStats, Config, ProjectStats, RepoInfo, RepoStats};
 use crate::parser::{group_repos_by_vanity, parse_repo_string};
-use crate::utils::{aggregate_stats, count_files_and_lines, debug, debug_git_command, log};
+use crate::utils::{aggregate_stats, count_files_and_lines, debug, debug_git_command, is_repo_active, log};
 use chrono::NaiveDate;
 use colored::*;
 use std::collections::HashMap;
@@ -360,7 +360,7 @@ pub fn analyze_all_categories(
             );
 
             // Skip inactive repositories if active-only flag is set
-            if active_only && repo_stats.commit_count == 0 {
+            if active_only && !is_repo_active(&repo_stats) {
                 continue;
             }
 
@@ -378,7 +378,7 @@ pub fn analyze_all_categories(
 
     // Filter only active repositories if needed
     if active_only {
-        all_repo_stats.retain(|(_, stats)| stats.commit_count > 0);
+        all_repo_stats.retain(|(_, stats)| is_repo_active(stats));
     }
 
     (categories, all_repo_stats)
@@ -412,6 +412,7 @@ pub fn analyze_all_projects(
     let mut project_list = Vec::new();
 
     for (vanity_name, repo_group) in grouped_repos {
+        debug(&format!("\nProcessing project: {}", vanity_name));
         let mut project_stats = ProjectStats {
             name: vanity_name,
             group: repo_group.first().and_then(|r| r.group.clone()),
@@ -420,6 +421,7 @@ pub fn analyze_all_projects(
         };
 
         let mut project_repo_stats = Vec::new();
+        let mut active_repos_in_project = 0;
 
         for repo_info in repo_group {
             let repo_path = &repo_info.path;
@@ -439,19 +441,21 @@ pub fn analyze_all_projects(
                 )
             };
 
+            debug(&format!("  Repository: {} - {} commits", repo_path, repo_stats.commit_count));
+
             // Skip inactive repositories if active-only flag is set
-            if active_only && repo_stats.commit_count == 0 {
+            if active_only && !is_repo_active(&repo_stats) {
                 continue;
             }
 
-            project_repo_stats.push(repo_stats);
+            if is_repo_active(&repo_stats) {
+                active_repos_in_project += 1;
+            }
 
-            // Debug for repository path
-            debug(&format!(
-                "Repository path: '{}', path for git: '{}'",
-                repo_path, repo_path
-            ));
+            project_repo_stats.push(repo_stats);
         }
+
+        debug(&format!("  Active repositories in project: {}", active_repos_in_project));
 
         // Aggregate statistics for this project
         project_stats.stats = aggregate_stats(&project_repo_stats);

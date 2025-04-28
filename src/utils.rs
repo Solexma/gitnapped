@@ -256,3 +256,14 @@ pub fn debug_git_command(repo: &str, cmd: &Command, output: &std::process::Outpu
     }
     println!("==========================");
 }
+
+/// Determines if a repository is active based on its commit count.
+///
+/// # Arguments
+/// * `stats` - The repository statistics
+///
+/// # Returns
+/// * `bool` - True if the repository has commits, false otherwise
+pub fn is_repo_active(stats: &RepoStats) -> bool {
+    stats.commit_count > 0
+}

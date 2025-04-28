@@ -14,7 +14,7 @@ use analyzer::{analyze_all_categories, analyze_all_projects, create_repo_path_ma
 use config::{load_config, parse_repos_from_config, push_to_empty_config};
 use display::{print_category_summary, print_projects_summary, print_total_stats};
 use models::RepoStats;
-use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, log, parse_period};
+use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, is_repo_active, log, parse_period};
 
 fn main() {
     let matches = ClapCommand::new("gitnapped")
@@ -275,13 +275,13 @@ fn main() {
     // Calculate the total number of active repositories
     let mut total_active_repos = all_repo_stats
         .iter()
-        .filter(|(_, stats)| stats.commit_count > 0)
+        .filter(|(_, stats)| is_repo_active(stats))
         .count();
 
     // Handle projects if requested
     let projects = if by_projects {
         // Analyze projects using the repo_stats_map for efficiency
-        Some(analyze_all_projects(
+        let project_list = analyze_all_projects(
             &repo_infos,
             &repo_stats_map,
             &author_filter,
@@ -290,7 +290,20 @@ fn main() {
             active_only,
             show_repo_details,
             show_filetypes,
-        ))
+        );
+
+        // Debug: Print all projects and their active status
+        debug("\nProjects and their active status:");
+        for project in &project_list {
+            debug(&format!(
+                "Project: {} - {} commits, {} active repos",
+                project.name,
+                project.stats.commit_count,
+                project.repos.len()
+            ));
+        }
+
+        Some(project_list)
     } else {
         None
     };
@@ -305,7 +318,14 @@ fn main() {
         // Calculate overall stats for projects
         total_active_repos = project_list
             .iter()
-            .filter(|project| project.stats.commit_count > 0)
+            .flat_map(|project| project.repos.iter())
+            .filter(|repo_path| {
+                if let Some(stats) = repo_stats_map.get(*repo_path) {
+                    is_repo_active(stats)
+                } else {
+                    false
+                }
+            })
             .count();
 
         // Extract project stats into a vector for aggregation
@@ -333,7 +353,7 @@ fn main() {
                     sort_by
                 ));
                 for (i, (repo, stats)) in sorted_repos.iter().enumerate().take(5) {
-                    if stats.commit_count > 0 || sort_by != "commits" {
+                    if is_repo_active(stats) || sort_by != "commits" {
                         log(&format!(
                             "{}. {} - {} commits, {} files, {} lines",
                             (i + 1).to_string().bright_yellow(),
