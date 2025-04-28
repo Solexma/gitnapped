@@ -14,7 +14,9 @@ use analyzer::{analyze_all_categories, analyze_all_projects, create_repo_path_ma
 use config::{load_config, parse_repos_from_config, push_to_empty_config};
 use display::{print_category_summary, print_projects_summary, print_total_stats};
 use models::RepoStats;
-use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, is_repo_active, log, parse_period};
+use utils::{
+    aggregate_stats, debug, init_debug_mode, init_silent_mode, is_repo_active, log, parse_period,
+};
 
 fn main() {
     let matches = ClapCommand::new("gitnapped")
@@ -202,11 +204,7 @@ fn main() {
             since = matches
                 .get_one::<String>("since")
                 .cloned()
-                .unwrap_or_else(|| {
-                    (now - Duration::days(1))
-                        .format("%Y-%m-%d")
-                        .to_string()
-                });
+                .unwrap_or_else(|| (now - Duration::days(1)).format("%Y-%m-%d").to_string());
 
             until = matches
                 .get_one::<String>("until")
@@ -219,11 +217,7 @@ fn main() {
         since = matches
             .get_one::<String>("since")
             .cloned()
-            .unwrap_or_else(|| {
-                (now - Duration::days(1))
-                    .format("%Y-%m-%d")
-                    .to_string()
-            });
+            .unwrap_or_else(|| (now - Duration::days(1)).format("%Y-%m-%d").to_string());
 
         until = matches
             .get_one::<String>("until")

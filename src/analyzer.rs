@@ -1,6 +1,8 @@
 use crate::models::{CategoryStats, Config, ProjectStats, RepoInfo, RepoStats};
 use crate::parser::{group_repos_by_vanity, parse_repo_string};
-use crate::utils::{aggregate_stats, count_files_and_lines, debug, debug_git_command, is_repo_active, log};
+use crate::utils::{
+    aggregate_stats, count_files_and_lines, debug, debug_git_command, is_repo_active, log,
+};
 use chrono::NaiveDate;
 use colored::*;
 use std::collections::HashMap;
@@ -36,13 +38,7 @@ pub fn analyze_repo(
 
     // Get commit history
     let mut cmd = Command::new("git");
-    cmd.args([
-        "-C",
-        repo,
-        "log",
-        "--pretty=format:%h %ad %s",
-        "--date=iso",
-    ]);
+    cmd.args(["-C", repo, "log", "--pretty=format:%h %ad %s", "--date=iso"]);
 
     if let Some(a) = author {
         cmd.arg(format!("--author={}", a));
@@ -186,10 +182,7 @@ pub fn analyze_repo(
         if let Some(date_part) = commit.split_whitespace().nth(1) {
             // Extract just the date part from ISO format (YYYY-MM-DD)
             let date = date_part.split('T').next().unwrap_or(date_part);
-            *stats
-                .commits_by_date
-                .entry(date.to_string())
-                .or_insert(0) += 1;
+            *stats.commits_by_date.entry(date.to_string()).or_insert(0) += 1;
         }
     }
 
@@ -441,7 +434,10 @@ pub fn analyze_all_projects(
                 )
             };
 
-            debug(&format!("  Repository: {} - {} commits", repo_path, repo_stats.commit_count));
+            debug(&format!(
+                "  Repository: {} - {} commits",
+                repo_path, repo_stats.commit_count
+            ));
 
             // Skip inactive repositories if active-only flag is set
             if active_only && !is_repo_active(&repo_stats) {
@@ -455,7 +451,10 @@ pub fn analyze_all_projects(
             project_repo_stats.push(repo_stats);
         }
 
-        debug(&format!("  Active repositories in project: {}", active_repos_in_project));
+        debug(&format!(
+            "  Active repositories in project: {}",
+            active_repos_in_project
+        ));
 
         // Aggregate statistics for this project
         project_stats.stats = aggregate_stats(&project_repo_stats);
