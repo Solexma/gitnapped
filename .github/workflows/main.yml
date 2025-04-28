@@ -71,7 +71,7 @@ jobs:
       - name: Calculate SHA256 for each binary
         run: |
           shopt -s nullglob  # Enable nullglob to handle empty directories
-          for file in artifacts/*.tar.gz; do
+          for file in artifacts/*/*.tar.gz; do
             if [ -f "$file" ]; then
               binary_name=$(basename "$file" .tar.gz)
               # Calculate SHA256 of the archive
