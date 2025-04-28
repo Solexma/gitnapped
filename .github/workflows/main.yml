@@ -5,6 +5,12 @@ on:
     tags:
       - v*
 
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  issues: write
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -48,7 +54,7 @@ jobs:
         with:
           files: artifacts/**/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
   update-tap:
     needs: release
