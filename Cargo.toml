@@ -1,6 +1,6 @@
 [package]
 name = "gitnapped"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Marco Orlandin <marco@solexma.com>"]
 description = "Find out why you didn't sleep – a Git commit timeline analyzer"
