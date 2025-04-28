@@ -1,10 +1,10 @@
 use crate::models::{Config, RepoInfo};
 use crate::parser::parse_repo_string;
 use colored::*;
+use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 use std::process;
-use std::collections::HashMap;
 
 pub fn push_to_empty_config(dir: &str) -> Config {
     let mut repos = HashMap::new();

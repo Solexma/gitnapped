@@ -59,7 +59,101 @@ pub fn analyze_repo(
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let commits: Vec<&str> = stdout.lines().collect();
+    let mut commits: Vec<String> = stdout.lines().map(String::from).collect();
+
+    // Check for submodules automatically
+    debug(&format!("Checking for submodules in repository: {}", repo));
+
+    // Get submodule status
+    let mut submodule_cmd = Command::new("git");
+    submodule_cmd.args(["-C", repo, "submodule", "status"]);
+
+    let submodule_output = match submodule_cmd.output() {
+        Ok(out) => {
+            debug_git_command(repo, &submodule_cmd, &out);
+            out
+        }
+        Err(e) => {
+            debug(&format!("Error executing git submodule command: {}", e));
+            // Continue without submodule info
+            stats.commit_count = commits.len();
+            return stats;
+        }
+    };
+
+    // Process submodules only if the command was successful and returned output
+    let has_submodules = submodule_output.status.success() && !submodule_output.stdout.is_empty();
+
+    if has_submodules {
+        let submodule_stdout = String::from_utf8_lossy(&submodule_output.stdout);
+        let submodule_lines: Vec<&str> = submodule_stdout.lines().collect();
+
+        debug(&format!("Found {} submodules", submodule_lines.len()));
+
+        for line in submodule_lines {
+            let parts: Vec<&str> = line.trim().split_whitespace().collect();
+            if parts.len() >= 2 {
+                // Extract submodule path (2nd element)
+                let submodule_path = parts[1];
+                let full_path = format!("{}/{}", repo, submodule_path);
+
+                debug(&format!("Found submodule: {}", full_path));
+
+                // Get commit history for this submodule
+                let mut sub_cmd = Command::new("git");
+                sub_cmd.args([
+                    "-C",
+                    &full_path,
+                    "log",
+                    "--pretty=format:[SUBMODULE %s] %h %ad %s",
+                    "--date=short",
+                ]);
+
+                if let Some(a) = author {
+                    sub_cmd.arg(format!("--author={}", a));
+                }
+
+                sub_cmd.arg(format!("--since={}", since));
+                sub_cmd.arg(format!("--until={}", until));
+
+                debug(&format!(
+                    "Executing git command on submodule: {}",
+                    full_path
+                ));
+
+                let sub_output = match sub_cmd.output() {
+                    Ok(out) => {
+                        debug_git_command(&full_path, &sub_cmd, &out);
+                        out
+                    }
+                    Err(e) => {
+                        debug(&format!("Error executing git command on submodule: {}", e));
+                        continue;
+                    }
+                };
+
+                if !sub_output.status.success() {
+                    debug(&format!(
+                        "Git command failed on submodule with status: {}",
+                        sub_output.status
+                    ));
+                } else {
+                    let sub_stdout = String::from_utf8_lossy(&sub_output.stdout);
+                    let sub_commit_count = sub_stdout.lines().count();
+
+                    // Add submodule commits to the list (convert to owned Strings)
+                    for commit in sub_stdout.lines() {
+                        commits.push(format!("{}", commit));
+                    }
+
+                    debug(&format!(
+                        "Added {} commits from submodule {}",
+                        sub_commit_count, submodule_path
+                    ));
+                }
+            }
+        }
+    }
 
     stats.commit_count = commits.len();
 

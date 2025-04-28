@@ -11,7 +11,7 @@ use colored::*;
 use std::collections::HashMap;
 
 use analyzer::{analyze_all_categories, analyze_all_projects, create_repo_path_map};
-use config::{load_config, push_to_empty_config, parse_repos_from_config};
+use config::{load_config, parse_repos_from_config, push_to_empty_config};
 use display::{print_category_summary, print_projects_summary, print_total_stats};
 use models::RepoStats;
 use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, log, parse_period};
@@ -96,7 +96,6 @@ fn main() {
             .action(clap::ArgAction::SetTrue))
         .get_matches();
 
-
     let default_dir = String::from("");
     let dir = matches.get_one::<String>("dir").unwrap_or(&default_dir);
     let since: String;
@@ -113,14 +112,14 @@ fn main() {
     let show_most_active_day = matches.get_flag("most-active-day");
     let debug_mode = matches.get_flag("debug");
     let silent_mode = matches.get_flag("silent");
-    
+
     let mut mandatory_author = false; // An author is mandatory if a directory is provided
     let mut bypass_config = false; // Config is bypassed if a directory is provided
 
     init_debug_mode(debug_mode);
     init_silent_mode(silent_mode);
 
-    // If a directory is provided, we need to 
+    // If a directory is provided, we need to
     if !dir.is_empty() {
         debug(&format!("Using directory: {}", dir));
         mandatory_author = true;
