@@ -70,10 +70,18 @@ jobs:
 
       - name: Calculate SHA256 for each binary
         run: |
+          shopt -s nullglob  # Enable nullglob to handle empty directories
           for file in artifacts/*.tar.gz; do
-            sha=$(shasum -a 256 "$file" | awk '{print $1}')
-            echo "sha256_$(basename "$file" .tar.gz)=$sha" >> $GITHUB_ENV
-            echo "Calculated SHA256 for $(basename "$file"): $sha"
+            if [ -f "$file" ]; then
+              binary_name=$(basename "$file" .tar.gz)
+              # Calculate SHA256 of the archive
+              sha=$(shasum -a 256 "$file" | awk '{print $1}')
+              echo "sha256_$binary_name=$sha" >> $GITHUB_ENV
+              echo "Calculated SHA256 for $binary_name: $sha"
+            else
+              echo "No .tar.gz files found in artifacts directory"
+              exit 1
+            fi
           done
 
       - name: Clone homebrew-gitnapped tap
@@ -81,20 +89,24 @@ jobs:
           git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git tap-repo
           cd tap-repo
 
+          # Extract version from tag (remove 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating to version: $VERSION"
+
           # Update version
-          sed -i "s|version \".*\"|version \"${{ github.event.release.tag_name }}\"|" Formula/gitnapped.rb
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/gitnapped.rb
 
           # Update URLs and SHA256s for each platform
           # macOS Intel
-          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-x86_64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
           sed -i "/if OS.mac? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-x86_64-apple-darwin }}\"|" Formula/gitnapped.rb
 
           # macOS ARM
-          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-aarch64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-aarch64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
           sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-aarch64-apple-darwin }}\"|" Formula/gitnapped.rb
 
           # Linux
-          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-x86_64-unknown-linux-gnu.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-unknown-linux-gnu.tar.gz\"|" Formula/gitnapped.rb
           sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-x86_64-unknown-linux-gnu }}\"|" Formula/gitnapped.rb
 
           git config user.name "github-actions[bot]"
