@@ -6,7 +6,24 @@ use colored::*;
 use std::collections::HashMap;
 use std::process::Command;
 
-// Analyzes a single repository and returns statistics
+/// Analyzes a single repository and returns its statistics.
+///
+/// # Arguments
+/// * `repo` - Path to the Git repository
+/// * `author` - Optional author name to filter commits
+/// * `since` - Start date for commit analysis (YYYY-MM-DD format)
+/// * `until` - End date for commit analysis (YYYY-MM-DD format)
+/// * `show_details` - Whether to print detailed information about the repository
+/// * `show_filetypes` - Whether to analyze and show file type statistics
+///
+/// # Returns
+/// * `RepoStats` - Statistics about the repository's commits, files, and lines
+///
+/// This function will:
+/// - Count commits in the specified date range
+/// - Handle submodules if present
+/// - Count files and lines in the repository
+/// - Analyze file types if requested
 pub fn analyze_repo(
     repo: &str,
     author: &Option<String>,
@@ -267,7 +284,14 @@ pub fn analyze_repo(
     stats
 }
 
-// Creates a mapping between original config file paths and cleaned paths
+/// Creates a mapping between original repository paths from the config file
+/// and their cleaned versions.
+///
+/// # Arguments
+/// * `config` - The configuration structure
+///
+/// # Returns
+/// * `HashMap<String, String>` - Map of original paths to cleaned paths
 pub fn create_repo_path_map(config: &Config) -> HashMap<String, String> {
     let mut repo_path_map: HashMap<String, String> = HashMap::new();
 
@@ -281,7 +305,22 @@ pub fn create_repo_path_map(config: &Config) -> HashMap<String, String> {
     repo_path_map
 }
 
-// Analyzes all categories from configuration data
+/// Analyzes all categories defined in the configuration and returns their statistics.
+///
+/// # Arguments
+/// * `config` - The configuration structure
+/// * `repo_path_map` - Mapping of repository paths
+/// * `author_filter` - Optional author name to filter commits
+/// * `since` - Start date for analysis (YYYY-MM-DD format)
+/// * `until` - End date for analysis (YYYY-MM-DD format)
+/// * `active_only` - Whether to include only repositories with commits
+/// * `show_repo_details` - Whether to show detailed repository information
+/// * `show_filetypes` - Whether to analyze and show file type statistics
+///
+/// # Returns
+/// * `(Vec<CategoryStats>, Vec<(String, RepoStats)>)` - Tuple containing:
+///   - Vector of category statistics
+///   - Vector of all repository statistics
 pub fn analyze_all_categories(
     config: &Config,
     repo_path_map: &HashMap<String, String>,
@@ -343,7 +382,20 @@ pub fn analyze_all_categories(
     (categories, all_repo_stats)
 }
 
-// Analyzes projects by grouping repositories by vanity name
+/// Analyzes all projects by grouping repositories with the same vanity name.
+///
+/// # Arguments
+/// * `repo_infos` - Vector of repository information
+/// * `repo_stats_map` - Map of repository paths to their statistics
+/// * `author_filter` - Optional author name to filter commits
+/// * `since` - Start date for analysis (YYYY-MM-DD format)
+/// * `until` - End date for analysis (YYYY-MM-DD format)
+/// * `active_only` - Whether to include only repositories with commits
+/// * `show_repo_details` - Whether to show detailed repository information
+/// * `show_filetypes` - Whether to analyze and show file type statistics
+///
+/// # Returns
+/// * `Vec<ProjectStats>` - Vector of project statistics
 pub fn analyze_all_projects(
     repo_infos: &[RepoInfo],
     repo_stats_map: &HashMap<String, RepoStats>,

@@ -25,6 +25,12 @@ Picture this: it's 5 PM, you're ready to call it a day, but then you think, "Jus
 
 ## Installation
 
+### Using Cargo
+
+```bash
+cargo install gitnapped
+```
+
 ### Using Homebrew
 
 ```bash

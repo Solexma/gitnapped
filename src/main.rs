@@ -18,9 +18,12 @@ use utils::{aggregate_stats, debug, init_debug_mode, init_silent_mode, log, pars
 
 fn main() {
     let matches = ClapCommand::new("gitnapped")
-        .version("0.1")
-        .author("Marco Orlandin")
+        .version(env!("CARGO_PKG_VERSION"))
+        .author(env!("CARGO_PKG_AUTHORS"))
         .about("Find out why you didn't sleep — commit history across repos")
+        .help_template(
+            "{before-help}{name} {version} - by {author}\n{about}\n\n{usage-heading}\n  {usage}\n\n{all-args}{after-help}"
+        )
         .arg(Arg::new("config")
             .short('c')
             .long("config")
