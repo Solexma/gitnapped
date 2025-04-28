@@ -25,6 +25,13 @@ Picture this: it's 5 PM, you're ready to call it a day, but then you think, "Jus
 
 ## Installation
 
+### Using Homebrew
+
+```bash
+brew tap Solexma/gitnapped
+brew install gitnapped
+```
+
 ### From Source
 
 ```bash
