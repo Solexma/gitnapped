@@ -1,35 +1,96 @@
 name: Update Homebrew Tap
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - v*
 
 jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Create tarball
+        run: |
+          tar czf gitnapped-${{ matrix.target }}.tar.gz target/${{ matrix.target }}/release/gitnapped
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: gitnapped-${{ matrix.target }}
+          path: gitnapped-${{ matrix.target }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   update-tap:
+    needs: release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source repo
         uses: actions/checkout@v4
 
-      - name: Download released tarball
-        run: |
-          curl -L https://github.com/solexma/gitnapped/archive/refs/tags/${{ github.event.release.tag_name }}.tar.gz -o source.tar.gz
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
 
-      - name: Calculate SHA256
-        id: sha256
+      - name: Calculate SHA256 for each binary
         run: |
-          sha=$(shasum -a 256 source.tar.gz | awk '{print $1}')
-          echo "sha256=$sha" >> $GITHUB_ENV
-          echo "Calculated SHA256: $sha"
+          for file in artifacts/*.tar.gz; do
+            sha=$(shasum -a 256 "$file" | awk '{print $1}')
+            echo "sha256_$(basename "$file" .tar.gz)=$sha" >> $GITHUB_ENV
+            echo "Calculated SHA256 for $(basename "$file"): $sha"
+          done
 
       - name: Clone homebrew-gitnapped tap
         run: |
           git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git tap-repo
           cd tap-repo
 
-          sed -i "s|url \".*\"|url \"https://github.com/solexma/gitnapped/archive/refs/tags/${{ github.event.release.tag_name }}.tar.gz\"|" Formula/gitnapped.rb
-          sed -i "s|sha256 \".*\"|sha256 \"${{ env.sha256 }}\"|" Formula/gitnapped.rb
+          # Update version
           sed -i "s|version \".*\"|version \"${{ github.event.release.tag_name }}\"|" Formula/gitnapped.rb
+
+          # Update URLs and SHA256s for each platform
+          # macOS Intel
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-x86_64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-x86_64-apple-darwin }}\"|" Formula/gitnapped.rb
+
+          # macOS ARM
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-aarch64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-aarch64-apple-darwin }}\"|" Formula/gitnapped.rb
+
+          # Linux
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/${{ github.event.release.tag_name }}/gitnapped-x86_64-unknown-linux-gnu.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ env.sha256_gitnapped-x86_64-unknown-linux-gnu }}\"|" Formula/gitnapped.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
