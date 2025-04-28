@@ -5,7 +5,7 @@ mod models;
 mod parser;
 mod utils;
 
-use chrono::{Duration, Utc};
+use chrono::{Duration, Local};
 use clap::{Arg, Command as ClapCommand};
 use colored::*;
 use std::collections::HashMap;
@@ -181,8 +181,9 @@ fn main() {
     if let Some(period) = matches.get_one::<String>("period") {
         // Parse relative time period
         if let Some(start_date) = parse_period(period) {
-            since = start_date.format("%Y-%m-%d").to_string();
-            until = Utc::now().format("%Y-%m-%d").to_string();
+            let now = Local::now();
+            since = start_date.format("%Y-%m-%d %H:%M:%S").to_string();
+            until = now.format("%Y-%m-%d %H:%M:%S").to_string();
 
             debug(&format!(
                 "Using relative period '{}': from {} to {}",
@@ -197,11 +198,12 @@ fn main() {
                 "Expected format like 6M, 2Y, 5D, 12H".yellow()
             ));
 
+            let now = Local::now();
             since = matches
                 .get_one::<String>("since")
                 .cloned()
                 .unwrap_or_else(|| {
-                    (Utc::now() - Duration::days(1))
+                    (now - Duration::days(1))
                         .format("%Y-%m-%d")
                         .to_string()
                 });
@@ -209,15 +211,16 @@ fn main() {
             until = matches
                 .get_one::<String>("until")
                 .cloned()
-                .unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
+                .unwrap_or_else(|| now.format("%Y-%m-%d").to_string());
         }
     } else {
         // Standard behavior using since/until parameters
+        let now = Local::now();
         since = matches
             .get_one::<String>("since")
             .cloned()
             .unwrap_or_else(|| {
-                (Utc::now() - Duration::days(1))
+                (now - Duration::days(1))
                     .format("%Y-%m-%d")
                     .to_string()
             });
@@ -225,7 +228,7 @@ fn main() {
         until = matches
             .get_one::<String>("until")
             .cloned()
-            .unwrap_or_else(|| Utc::now().format("%Y-%m-%d").to_string());
+            .unwrap_or_else(|| now.format("%Y-%m-%d").to_string());
     }
 
     log(&format!(

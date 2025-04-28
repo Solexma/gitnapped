@@ -1,5 +1,5 @@
 use crate::models::RepoStats;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Duration, Local};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
@@ -74,21 +74,21 @@ pub fn log(message: &str) {
 /// let two_years_ago = parse_period("2Y");
 /// let five_days_ago = parse_period("5D");
 /// ```
-pub fn parse_period(period: &str) -> Option<DateTime<Utc>> {
+pub fn parse_period(period: &str) -> Option<DateTime<Local>> {
     let re = Regex::new(r"^(\d+)([YMWDH])$").unwrap();
 
     if let Some(caps) = re.captures(period) {
         let amount: i64 = caps.get(1)?.as_str().parse().ok()?;
         let unit = caps.get(2)?.as_str();
 
-        let now = Utc::now();
+        let now = Local::now();
 
         match unit {
-            "Y" => Some(now - Duration::days(amount * 365)),
-            "M" => Some(now - Duration::days(amount * 30)),
-            "W" => Some(now - Duration::days(amount * 7)),
-            "D" => Some(now - Duration::days(amount)),
-            "H" => Some(now - Duration::hours(amount)),
+            "Y" => Some((now - Duration::days(amount * 365)).into()),
+            "M" => Some((now - Duration::days(amount * 30)).into()),
+            "W" => Some((now - Duration::days(amount * 7)).into()),
+            "D" => Some((now - Duration::days(amount)).into()),
+            "H" => Some((now - Duration::hours(amount)).into()),
             _ => None,
         }
     } else {

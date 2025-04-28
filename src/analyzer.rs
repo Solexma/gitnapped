@@ -41,7 +41,7 @@ pub fn analyze_repo(
         repo,
         "log",
         "--pretty=format:%h %ad %s",
-        "--date=short",
+        "--date=iso",
     ]);
 
     if let Some(a) = author {
@@ -184,9 +184,11 @@ pub fn analyze_repo(
     // Parse commits by date
     for commit in &commits {
         if let Some(date_part) = commit.split_whitespace().nth(1) {
+            // Extract just the date part from ISO format (YYYY-MM-DD)
+            let date = date_part.split('T').next().unwrap_or(date_part);
             *stats
                 .commits_by_date
-                .entry(date_part.to_string())
+                .entry(date.to_string())
                 .or_insert(0) += 1;
         }
     }
