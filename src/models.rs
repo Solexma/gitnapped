@@ -17,6 +17,8 @@ pub struct Config {
 pub struct RepoStats {
     /// Total number of commits
     pub commit_count: usize,
+    /// Number of commits made outside working hours
+    pub out_of_hours_commits: usize,
     /// Total number of files
     pub file_count: usize,
     /// Total number of lines of code

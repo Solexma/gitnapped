@@ -203,6 +203,7 @@ pub fn aggregate_stats(stats_vec: &[RepoStats]) -> RepoStats {
 
     for stats in stats_vec {
         aggregated.commit_count += stats.commit_count;
+        aggregated.out_of_hours_commits += stats.out_of_hours_commits;
         aggregated.file_count += stats.file_count;
         aggregated.line_count += stats.line_count;
 
@@ -266,4 +267,99 @@ pub fn debug_git_command(repo: &str, cmd: &Command, output: &std::process::Outpu
 /// * `bool` - True if the repository has commits, false otherwise
 pub fn is_repo_active(stats: &RepoStats) -> bool {
     stats.commit_count > 0
+}
+
+/// Parses a working time string in either 24-hour (HH:MM-HH:MM) or 12-hour (HAM-PM) format.
+/// Returns a tuple of (start_hour, start_minute, end_hour, end_minute) in 24-hour format.
+///
+/// # Arguments
+/// * `time_str` - The working time string to parse
+///
+/// # Returns
+/// * `Option<(u32, u32, u32, u32)>` - The parsed times if successful, None if invalid
+///
+/// # Examples
+/// ```
+/// // 24-hour format
+/// let times = parse_working_time("09:00-17:00");
+/// assert_eq!(times, Some((9, 0, 17, 0)));
+///
+/// // 12-hour format
+/// let times = parse_working_time("9AM-5PM");
+/// assert_eq!(times, Some((9, 0, 17, 0)));
+/// ```
+pub fn parse_working_time(time_str: &str) -> Option<(u32, u32, u32, u32)> {
+    // Try 24-hour format first (HH:MM-HH:MM)
+    if let Some((start, end)) = time_str.split_once('-') {
+        let start = start.trim();
+        let end = end.trim();
+
+        // Parse 24-hour format
+        if let (Some((start_hour, start_min)), Some((end_hour, end_min))) =
+            (parse_24h_time(start), parse_24h_time(end))
+        {
+            return Some((start_hour, start_min, end_hour, end_min));
+        }
+
+        // Try 12-hour format
+        if let (Some((start_hour, start_min)), Some((end_hour, end_min))) =
+            (parse_12h_time(start), parse_12h_time(end))
+        {
+            return Some((start_hour, start_min, end_hour, end_min));
+        }
+    }
+
+    None
+}
+
+/// Parses a time string in 24-hour format (HH:MM)
+fn parse_24h_time(time: &str) -> Option<(u32, u32)> {
+    let parts: Vec<&str> = time.split(':').collect();
+    if parts.len() != 2 {
+        return None;
+    }
+
+    let hour: u32 = parts[0].trim().parse().ok()?;
+    let minute: u32 = parts[1].trim().parse().ok()?;
+
+    if hour > 23 || minute > 59 {
+        return None;
+    }
+
+    Some((hour, minute))
+}
+
+/// Parses a time string in 12-hour format (HAM or H:MMAM)
+fn parse_12h_time(time: &str) -> Option<(u32, u32)> {
+    let time = time.to_uppercase();
+    let is_pm = time.contains("PM");
+    let time = time.replace("AM", "").replace("PM", "").trim().to_string();
+
+    let parts: Vec<&str> = time.split(':').collect();
+    let hour: u32 = parts[0].trim().parse().ok()?;
+    let minute: u32 = if parts.len() > 1 {
+        parts[1].trim().parse().ok()?
+    } else {
+        0
+    };
+
+    if hour > 12 || minute > 59 {
+        return None;
+    }
+
+    let hour_24 = if is_pm {
+        if hour == 12 {
+            12
+        } else {
+            hour + 12
+        }
+    } else {
+        if hour == 12 {
+            0
+        } else {
+            hour
+        }
+    };
+
+    Some((hour_24, minute))
 }

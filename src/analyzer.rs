@@ -17,6 +17,7 @@ use std::process::Command;
 /// * `until` - End date for commit analysis (YYYY-MM-DD format)
 /// * `show_details` - Whether to print detailed information about the repository
 /// * `show_filetypes` - Whether to analyze and show file type statistics
+/// * `working_hours` - Optional working hours to track out-of-hours commits
 ///
 /// # Returns
 /// * `RepoStats` - Statistics about the repository's commits, files, and lines
@@ -26,6 +27,7 @@ use std::process::Command;
 /// - Handle submodules if present
 /// - Count files and lines in the repository
 /// - Analyze file types if requested
+/// - Track out-of-hours commits
 pub fn analyze_repo(
     repo: &str,
     author: &Option<String>,
@@ -33,12 +35,19 @@ pub fn analyze_repo(
     until: &str,
     show_details: bool,
     show_filetypes: bool,
+    working_hours: Option<(u32, u32, u32, u32)>,
 ) -> RepoStats {
     let mut stats = RepoStats::default();
 
     // Get commit history
     let mut cmd = Command::new("git");
-    cmd.args(["-C", repo, "log", "--pretty=format:%h %ad %s", "--date=iso"]);
+    cmd.args([
+        "-C",
+        repo,
+        "log",
+        "--pretty=format:%h %ad %s",
+        "--date=iso-strict",
+    ]);
 
     if let Some(a) = author {
         cmd.arg(format!("--author={}", a));
@@ -177,12 +186,40 @@ pub fn analyze_repo(
         repo
     ));
 
-    // Parse commits by date
+    // Parse commits by date and check for out-of-hours commits
     for commit in &commits {
         if let Some(date_part) = commit.split_whitespace().nth(1) {
+            debug(&format!("Processing commit date: {}", date_part));
+
             // Extract just the date part from ISO format (YYYY-MM-DD)
             let date = date_part.split('T').next().unwrap_or(date_part);
             *stats.commits_by_date.entry(date.to_string()).or_insert(0) += 1;
+
+            // Check if commit is outside working hours
+            if let Some((start_hour, start_min, end_hour, end_min)) = working_hours {
+                if let Some(time_part) = date_part.split('T').nth(1) {
+                    debug(&format!("Found time part: {}", time_part));
+                    if let Some((hour, minute)) = parse_commit_time(time_part) {
+                        debug(&format!(
+                            "Parsed commit time: {:02}:{:02} (working hours: {:02}:{:02}-{:02}:{:02})",
+                            hour, minute, start_hour, start_min, end_hour, end_min
+                        ));
+                        if !is_within_working_hours(
+                            hour, minute, start_hour, start_min, end_hour, end_min,
+                        ) {
+                            stats.out_of_hours_commits += 1;
+                            debug(&format!(
+                                "Found out-of-hours commit at {:02}:{:02}",
+                                hour, minute
+                            ));
+                        }
+                    } else {
+                        debug(&format!("Failed to parse time: {}", time_part));
+                    }
+                } else {
+                    debug("No time part found in commit date");
+                }
+            }
         }
     }
 
@@ -205,6 +242,13 @@ pub fn analyze_repo(
             "Commits".yellow(),
             stats.commit_count.to_string().cyan()
         ));
+        if let Some(_) = working_hours {
+            log(&format!(
+                "{}: {}",
+                "Out-of-hours commits".yellow(),
+                stats.out_of_hours_commits.to_string().cyan()
+            ));
+        }
         log(&format!(
             "{}: {}",
             "Files".yellow(),
@@ -279,6 +323,50 @@ pub fn analyze_repo(
     stats
 }
 
+/// Parses a time string in ISO format (HH:MM:SS+HHMM) and returns the hour and minute
+fn parse_commit_time(time: &str) -> Option<(u32, u32)> {
+    // Split on the timezone offset
+    let time_part = time.split('+').next()?;
+    let parts: Vec<&str> = time_part.split(':').collect();
+    if parts.len() < 2 {
+        return None;
+    }
+
+    let hour: u32 = parts[0].parse().ok()?;
+    let minute: u32 = parts[1].parse().ok()?;
+
+    debug(&format!("Parsed commit time: {:02}:{:02}", hour, minute));
+
+    Some((hour, minute))
+}
+
+/// Checks if a given time is within working hours
+fn is_within_working_hours(
+    hour: u32,
+    minute: u32,
+    start_hour: u32,
+    start_min: u32,
+    end_hour: u32,
+    end_min: u32,
+) -> bool {
+    let commit_time = hour * 60 + minute;
+    let start_time = start_hour * 60 + start_min;
+    let end_time = end_hour * 60 + end_min;
+
+    // If commit time is before start time, it's out of hours
+    if commit_time < start_time {
+        return false;
+    }
+
+    // If commit time is after end time, it's out of hours
+    if commit_time > end_time {
+        return false;
+    }
+
+    // Otherwise it's within working hours
+    true
+}
+
 /// Creates a mapping between original repository paths from the config file
 /// and their cleaned versions.
 ///
@@ -311,6 +399,7 @@ pub fn create_repo_path_map(config: &Config) -> HashMap<String, String> {
 /// * `active_only` - Whether to include only repositories with commits
 /// * `show_repo_details` - Whether to show detailed repository information
 /// * `show_filetypes` - Whether to analyze and show file type statistics
+/// * `working_hours` - Optional working hours to filter out-of-hours commits
 ///
 /// # Returns
 /// * `(Vec<CategoryStats>, Vec<(String, RepoStats)>)` - Tuple containing:
@@ -325,6 +414,7 @@ pub fn analyze_all_categories(
     active_only: bool,
     show_repo_details: bool,
     show_filetypes: bool,
+    working_hours: Option<(u32, u32, u32, u32)>,
 ) -> (Vec<CategoryStats>, Vec<(String, RepoStats)>) {
     let mut categories = Vec::new();
     let mut all_repo_stats = Vec::new();
@@ -350,6 +440,7 @@ pub fn analyze_all_categories(
                 until,
                 show_repo_details,
                 show_filetypes,
+                working_hours,
             );
 
             // Skip inactive repositories if active-only flag is set
@@ -388,6 +479,7 @@ pub fn analyze_all_categories(
 /// * `active_only` - Whether to include only repositories with commits
 /// * `show_repo_details` - Whether to show detailed repository information
 /// * `show_filetypes` - Whether to analyze and show file type statistics
+/// * `working_hours` - Optional working hours to filter out-of-hours commits
 ///
 /// # Returns
 /// * `Vec<ProjectStats>` - Vector of project statistics
@@ -400,6 +492,7 @@ pub fn analyze_all_projects(
     active_only: bool,
     show_repo_details: bool,
     show_filetypes: bool,
+    working_hours: Option<(u32, u32, u32, u32)>,
 ) -> Vec<ProjectStats> {
     let grouped_repos = group_repos_by_vanity(repo_infos);
     let mut project_list = Vec::new();
@@ -431,6 +524,7 @@ pub fn analyze_all_projects(
                     until,
                     show_repo_details,
                     show_filetypes,
+                    working_hours,
                 )
             };
 

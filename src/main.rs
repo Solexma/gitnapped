@@ -9,6 +9,7 @@ use chrono::{Duration, Local};
 use clap::{Arg, Command as ClapCommand};
 use colored::*;
 use std::collections::HashMap;
+use std::process;
 
 use analyzer::{analyze_all_categories, analyze_all_projects, create_repo_path_map};
 use config::{load_config, parse_repos_from_config, push_to_empty_config};
@@ -16,6 +17,7 @@ use display::{print_category_summary, print_projects_summary, print_total_stats}
 use models::RepoStats;
 use utils::{
     aggregate_stats, debug, init_debug_mode, init_silent_mode, is_repo_active, log, parse_period,
+    parse_working_time,
 };
 
 fn main() {
@@ -91,6 +93,28 @@ fn main() {
             .long("silent")
             .help("Silent mode, no output")
             .action(clap::ArgAction::SetTrue))
+        .arg(Arg::new("working-time")
+            .long("working-time")
+            .help("Working hours in 24-hour (HH:MM-HH:MM) or 12-hour (HAM-PM) format")
+            .value_name("WORKING_TIME")
+            .default_value("09:00-17:00"))
+        .arg(Arg::new("ungitnapped")
+            .long("ungitnapped")
+            .help("Hide gitnapped information from the output")
+            .action(clap::ArgAction::SetTrue))
+        .arg(Arg::new("most-active-repos")
+            .long("most-active-repos")
+            .help("How many most active repositories to show")
+            .value_name("MOST_ACTIVE_REPOS_COUNT")
+            .default_value("5"))
+        .arg(Arg::new("show-total-stats")
+            .long("show-total-stats")
+            .help("Show total stats across all analyzed entities")
+            .action(clap::ArgAction::SetTrue))
+        .arg(Arg::new("pretty")
+            .long("pretty")
+            .help("Pretty print the output")
+            .action(clap::ArgAction::SetTrue))
         .arg(Arg::new("json")
             .long("json")
             .help("Output in JSON format")
@@ -115,8 +139,13 @@ fn main() {
     let show_repo_details = matches.get_flag("repo-details");
     let show_filetypes = matches.get_flag("filetypes");
     let show_most_active_day = matches.get_flag("most-active-day");
+    let hide_gitnapped_stats = matches.get_flag("ungitnapped");
     let debug_mode = matches.get_flag("debug");
     let silent_mode = matches.get_flag("silent");
+    let most_active_repos_count = matches
+        .get_one::<String>("most-active-repos")
+        .and_then(|s| s.parse::<usize>().ok())
+        .unwrap_or(5);
 
     let mut mandatory_author = false; // An author is mandatory if a directory is provided
     let mut bypass_config = false; // Config is bypassed if a directory is provided
@@ -239,6 +268,25 @@ fn main() {
     // Create a mapping between original strings and clean paths
     let repo_path_map = create_repo_path_map(&config);
 
+    let working_time = matches.get_one::<String>("working-time").unwrap();
+    let working_hours = if let Some((start_hour, start_min, end_hour, end_min)) =
+        parse_working_time(working_time)
+    {
+        debug(&format!(
+            "Working hours: {:02}:{:02}-{:02}:{:02}",
+            start_hour, start_min, end_hour, end_min
+        ));
+        Some((start_hour, start_min, end_hour, end_min))
+    } else {
+        log(&format!(
+            "{} '{}' - {}",
+            "Warning: Invalid working time format".bright_red(),
+            working_time,
+            "Expected format like 09:00-17:00 or 9AM-5PM".yellow()
+        ));
+        process::exit(1);
+    };
+
     // Analyze all categories
     let (categories, all_repo_stats) = analyze_all_categories(
         &config,
@@ -249,6 +297,7 @@ fn main() {
         active_only,
         show_repo_details,
         show_filetypes,
+        working_hours,
     );
 
     // Create a map of repo path to its statistics for reuse
@@ -284,6 +333,7 @@ fn main() {
             active_only,
             show_repo_details,
             show_filetypes,
+            working_hours,
         );
 
         // Debug: Print all projects and their active status
@@ -304,7 +354,12 @@ fn main() {
 
     // Print appropriate output based on flags
     if by_categories {
-        print_category_summary(&categories, sort_by, show_filetypes);
+        print_category_summary(
+            &categories,
+            sort_by,
+            show_filetypes,
+            matches.get_flag("pretty"),
+        );
     } else if let Some(project_list) = &projects {
         // Print project statistics
         print_projects_summary(project_list, sort_by, show_filetypes, show_repo_details);
@@ -342,20 +397,68 @@ fn main() {
             }
             if sorted_repos.len() > 1 {
                 log(&format!(
-                    "\n{} (sorted by {})",
-                    "Most Active Repositories".bright_green(),
+                    "\n{} {} {} (sorted by {})",
+                    "Top".bright_green(),
+                    most_active_repos_count.to_string().bright_yellow(),
+                    "active Repositories".bright_green(),
                     sort_by
                 ));
-                for (i, (repo, stats)) in sorted_repos.iter().enumerate().take(5) {
+                for (i, (repo, stats)) in sorted_repos
+                    .iter()
+                    .enumerate()
+                    .take(most_active_repos_count)
+                {
                     if is_repo_active(stats) || sort_by != "commits" {
-                        log(&format!(
-                            "{}. {} - {} commits, {} files, {} lines",
-                            (i + 1).to_string().bright_yellow(),
-                            repo.green(),
-                            stats.commit_count.to_string().cyan(),
-                            stats.file_count.to_string().blue(),
-                            stats.line_count.to_string().magenta()
-                        ));
+                        if matches.get_flag("pretty") {
+                            // Get the vanity name from repo_infos
+                            let vanity_name = repo_infos
+                                .iter()
+                                .find(|info| info.path == *repo)
+                                .map(|info| info.vanity_name.clone())
+                                .unwrap_or_else(|| {
+                                    repo.split('/').last().unwrap_or(repo).to_string()
+                                });
+
+                            if stats.out_of_hours_commits > 0 {
+                                let percentage = if stats.commit_count > 0 {
+                                    (stats.out_of_hours_commits as f32 / stats.commit_count as f32
+                                        * 100.0) as u32
+                                } else {
+                                    0
+                                };
+                                log(&format!(
+                                    "{}. {} - {} commits [{}: {}% ({})]",
+                                    (i + 1).to_string().bright_yellow(),
+                                    vanity_name.green(),
+                                    stats.commit_count.to_string().cyan(),
+                                    "Gitnapped for".yellow(),
+                                    percentage.to_string().red(),
+                                    stats.out_of_hours_commits.to_string().red()
+                                ));
+                            } else {
+                                log(&format!(
+                                    "{}. {} - {} commits",
+                                    (i + 1).to_string().bright_yellow(),
+                                    vanity_name.green(),
+                                    stats.commit_count.to_string().cyan()
+                                ));
+                            }
+                        } else {
+                            log(&format!(
+                                "{}. {} - {} commits, {} files, {} lines",
+                                (i + 1).to_string().bright_yellow(),
+                                repo.green(),
+                                stats.commit_count.to_string().cyan(),
+                                stats.file_count.to_string().blue(),
+                                stats.line_count.to_string().magenta()
+                            ));
+                            if stats.out_of_hours_commits > 0 {
+                                log(&format!(
+                                    "   {} commits",
+                                    format!("Gitnapped for {}", stats.out_of_hours_commits).red()
+                                ));
+                            }
+                        }
                     }
                 }
             }
@@ -376,5 +479,7 @@ fn main() {
         item_type,
         show_filetypes,
         show_most_active_day || (!by_categories && !by_projects),
+        hide_gitnapped_stats,
+        matches.get_flag("show-total-stats"),
     );
 }

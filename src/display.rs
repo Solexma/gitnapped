@@ -6,7 +6,12 @@ use crate::utils::log;
 use colored::*;
 use std::collections::HashMap;
 
-pub fn print_category_summary(categories: &[CategoryStats], sort_by: &str, show_filetypes: bool) {
+pub fn print_category_summary(
+    categories: &[CategoryStats],
+    sort_by: &str,
+    show_filetypes: bool,
+    pretty: bool,
+) {
     log(&format!("\n{}", "Category Statistics:".bright_green()));
 
     for category in categories {
@@ -34,9 +39,23 @@ pub fn print_category_summary(categories: &[CategoryStats], sort_by: &str, show_
 
         log(&format!(
             "{}: {}",
-            "Total commits".yellow(),
+            "Commits".yellow(),
             category.total.commit_count.to_string().cyan()
         ));
+        if category.total.out_of_hours_commits > 0 {
+            let percentage = if category.total.commit_count > 0 {
+                (category.total.out_of_hours_commits as f32 / category.total.commit_count as f32
+                    * 100.0) as u32
+            } else {
+                0
+            };
+            log(&format!(
+                "{}: {}% ({})",
+                "Gitnapped for".yellow(),
+                percentage.to_string().red(),
+                category.total.out_of_hours_commits.to_string().red()
+            ));
+        }
         log(&format!(
             "{}: {}",
             "Total files".yellow(),
@@ -90,14 +109,45 @@ pub fn print_category_summary(categories: &[CategoryStats], sort_by: &str, show_
             ));
             for (i, (repo, stats)) in sorted_repos.iter().enumerate().take(3) {
                 if stats.commit_count > 0 || sort_by != "commits" {
-                    log(&format!(
-                        "   {}. {} - {} commits, {} files, {} lines",
-                        (i + 1).to_string().bright_yellow(),
-                        repo.split('/').last().unwrap_or(repo).green(),
-                        stats.commit_count.to_string().cyan(),
-                        stats.file_count.to_string().blue(),
-                        stats.line_count.to_string().magenta()
-                    ));
+                    if pretty {
+                        // Extract vanity name from the path
+                        let vanity_name = repo.split('/').last().unwrap_or(repo);
+                        log(&format!(
+                            "   {}. {} - {} commits",
+                            (i + 1).to_string().bright_yellow(),
+                            vanity_name.green(),
+                            stats.commit_count.to_string().cyan()
+                        ));
+                        if stats.out_of_hours_commits > 0 {
+                            let percentage = if stats.commit_count > 0 {
+                                (stats.out_of_hours_commits as f32 / stats.commit_count as f32
+                                    * 100.0) as u32
+                            } else {
+                                0
+                            };
+                            log(&format!(
+                                "      {}: {}% ({})",
+                                "Gitnapped for".yellow(),
+                                percentage.to_string().red(),
+                                stats.out_of_hours_commits.to_string().red()
+                            ));
+                        }
+                    } else {
+                        log(&format!(
+                            "   {}. {} - {} commits, {} files, {} lines",
+                            (i + 1).to_string().bright_yellow(),
+                            repo.split('/').last().unwrap_or(repo).green(),
+                            stats.commit_count.to_string().cyan(),
+                            stats.file_count.to_string().blue(),
+                            stats.line_count.to_string().magenta()
+                        ));
+                        if stats.out_of_hours_commits > 0 {
+                            log(&format!(
+                                "      {} commits",
+                                format!("Gitnapped for {}", stats.out_of_hours_commits).red()
+                            ));
+                        }
+                    }
                 }
             }
         }
@@ -155,6 +205,12 @@ pub fn print_projects_summary(
                 project.stats.line_count.to_string().magenta(),
                 project.repos.len().to_string().yellow()
             ));
+            if project.stats.out_of_hours_commits > 0 {
+                log(&format!(
+                    "   {} commits",
+                    format!("Gitnapped for {}", project.stats.out_of_hours_commits).red()
+                ));
+            }
 
             // If requested, show the repositories included in this project
             if show_repo_details {
@@ -208,10 +264,12 @@ pub fn print_total_stats(
     entity_name: &str,
     show_filetypes: bool,
     show_most_active: bool,
+    hide_gitnapped_stats: bool,
+    show_total_stats: bool,
 ) {
     log(&format!(
         "\n{}",
-        format!("Total Stats Across All {}:", entity_name).bright_green()
+        format!("Stats across analyzed {}:", entity_name).bright_green()
     ));
     log(&format!(
         "{}: {}",
@@ -220,19 +278,34 @@ pub fn print_total_stats(
     ));
     log(&format!(
         "{}: {}",
-        "Total commits".yellow(),
+        "Commits".yellow(),
         stats.commit_count.to_string().cyan()
     ));
-    log(&format!(
-        "{}: {}",
-        "Total files".yellow(),
-        stats.file_count.to_string().cyan()
-    ));
-    log(&format!(
-        "{}: {}",
-        "Total lines of code".yellow(),
-        stats.line_count.to_string().cyan()
-    ));
+    if !hide_gitnapped_stats {
+        let percentage = if stats.commit_count > 0 {
+            (stats.out_of_hours_commits as f32 / stats.commit_count as f32 * 100.0) as u32
+        } else {
+            0
+        };
+        log(&format!(
+            "{}: {}% ({})",
+            "Gitnapped for".yellow(),
+            percentage.to_string().red(),
+            stats.out_of_hours_commits.to_string().red()
+        ));
+    }
+    if show_total_stats {
+        log(&format!(
+            "{}: {}",
+            "Total files".yellow(),
+            stats.file_count.to_string().cyan()
+        ));
+        log(&format!(
+            "{}: {}",
+            "Total lines of code".yellow(),
+            stats.line_count.to_string().cyan()
+        ));
+    }
 
     if show_most_active {
         print_most_active_day(&stats.commits_by_date);
