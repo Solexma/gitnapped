@@ -1,5 +1,7 @@
 # Gitnapped
 
+![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)
+
 > Find out why you didn't sleep – a Git commit timeline analyzer
 
 Gitnapped is a command-line tool that analyzes your Git commit history across multiple repositories. It provides insights into your coding patterns, helping you understand where your time is spent across projects.
@@ -103,7 +105,7 @@ Please note that the **author name** will be used to filter the commits.
 -u, --until <DATE>           End date for analysis (YYYY-MM-DD)
 -p, --period <PERIOD>        Relative time period (e.g., 6M, 2Y, 5D, 12H)
     --active-only            Show only repositories with commits in the period
-    --sort-by <FIELD>        Sort repositories by: commits, files, lines
+    --sort-by <FIELD>        Sort repositories by: commits, files, lines (default: commits)
     --categories             Show statistics by category
     --projects               Group repositories by project name
     --repo-details           Show detailed information for each repository
@@ -114,6 +116,11 @@ Please note that the **author name** will be used to filter the commits.
     --silent                 Silent mode, no output
     --json                   Output in JSON format
     --debug                  Enable debug messages
+    --working-time <TIME>    Working hours in 24-hour (HH:MM-HH:MM) or 12-hour (HAM-PM) format (default: 09:00-17:00)
+    --ungitnapped            Hide gitnapped information from the output
+    --most-active-repos <N>  How many most active repositories to show (default: 5)
+    --show-total-stats       Show total stats across all analyzed entities
+    --pretty                 Pretty print the output
 ```
 
 ## License
