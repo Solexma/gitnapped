@@ -1,0 +1,55 @@
+name: Update Homebrew Formula
+
+on:
+  workflow_run:
+    workflows: ["Release"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  update-brew:
+    name: Update Homebrew Formula
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v4
+
+      - name: Clone homebrew-gitnapped tap
+        run: |
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git tap-repo
+          cd tap-repo
+
+          # Get version from the release tag
+          VERSION=$(echo ${{ github.event.workflow_run.head_branch }} | sed 's/v//')
+          echo "Updating to version: $VERSION"
+
+          # Update version
+          sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/gitnapped.rb
+
+          # Update URLs and SHA256s for each platform
+          # macOS Intel
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_x86_64-apple-darwin }}\"|" Formula/gitnapped.rb
+
+          # macOS ARM
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-aarch64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_aarch64-apple-darwin }}\"|" Formula/gitnapped.rb
+
+          # Linux
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-unknown-linux-gnu.tar.gz\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_x86_64-unknown-linux-gnu }}\"|" Formula/gitnapped.rb
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add Formula/gitnapped.rb
+
+          if git diff --cached --quiet; then
+            echo "No changes detected, skipping commit."
+          else
+            git commit -m "Update gitnapped.rb to version $VERSION"
+            git push https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/solexma/homebrew-gitnapped.git HEAD:main
+          fi 

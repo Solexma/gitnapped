@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - v*
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build-binaries:
+    name: Build Binaries
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    outputs:
+      sha256_x86_64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_x86_64-apple-darwin }}
+      sha256_aarch64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_aarch64-apple-darwin }}
+      sha256_x86_64-unknown-linux-gnu: ${{ steps.calculate-sha.outputs.sha256_x86_64-unknown-linux-gnu }}
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: ${{ matrix.target }}
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+      - name: Create tarball and calculate SHA256
+        id: calculate-sha
+        run: |
+          mkdir -p temp_bin
+          cp target/${{ matrix.target }}/release/gitnapped temp_bin/
+          tar czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
+          sha=$(shasum -a 256 gitnapped-${{ matrix.target }}.tar.gz | awk '{print $1}')
+          echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
+          echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
+          rm -rf temp_bin
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitnapped-${{ matrix.target }}
+          path: gitnapped-${{ matrix.target }}.tar.gz
+
+  create-deb:
+    name: Create Debian Package
+    needs: build-binaries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+      - name: Create Debian package
+        run: cargo deb
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitnapped-deb
+          path: target/debian/*.deb
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-binaries, create-deb]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

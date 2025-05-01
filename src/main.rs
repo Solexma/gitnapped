@@ -89,6 +89,11 @@ fn main() {
             .long("most-active-day")
             .help("Show the most active day")
             .action(clap::ArgAction::SetTrue))
+        .arg(Arg::new("most-active-repos")
+            .long("most-active-repos")
+            .help("How many most active repositories to show")
+            .value_name("MOST_ACTIVE_REPOS_COUNT")
+            .default_value("5"))
         .arg(Arg::new("silent")
             .long("silent")
             .help("Silent mode, no output")
@@ -102,11 +107,6 @@ fn main() {
             .long("ungitnapped")
             .help("Hide gitnapped information from the output")
             .action(clap::ArgAction::SetTrue))
-        .arg(Arg::new("most-active-repos")
-            .long("most-active-repos")
-            .help("How many most active repositories to show")
-            .value_name("MOST_ACTIVE_REPOS_COUNT")
-            .default_value("5"))
         .arg(Arg::new("show-total-stats")
             .long("show-total-stats")
             .help("Show total stats across all analyzed entities")
@@ -166,10 +166,53 @@ fn main() {
         let config_path = matches
             .get_one::<String>("config")
             .unwrap_or(&default_config);
-        load_config(config_path)
+
+        // Try to load config, if it doesn't exist, use current directory
+        match load_config(config_path) {
+            Ok(config) => {
+                debug(&format!("Loaded config from {}", config_path));
+                log(&format!(
+                    "{} {}",
+                    "Loaded config from".bright_yellow(),
+                    config_path.bright_cyan()
+                ));
+                config
+            }
+            Err(_err) => {
+                debug(&format!("Using current directory as fallback"));
+                match push_to_empty_config(".") {
+                    Ok(config) => {
+                        debug(&format!("Loaded empty config"));
+                        log(&format!(
+                            "{}",
+                            "Analyzing current directory".bright_yellow()
+                        ));
+                        config
+                    }
+                    Err(err) => {
+                        log(&format!("{}: {}", "Error".bright_red(), err));
+                        process::exit(1);
+                    }
+                }
+            }
+        }
     } else {
         debug(&format!("Loading empty config"));
-        push_to_empty_config(&dir)
+        match push_to_empty_config(&dir) {
+            Ok(config) => {
+                debug(&format!("Loaded empty config"));
+                log(&format!(
+                    "{} {}",
+                    "Analyzing directory:".bright_yellow(),
+                    dir.bright_cyan()
+                ));
+                config
+            }
+            Err(err) => {
+                log(&format!("{}: {}", "Error".bright_red(), err));
+                process::exit(1);
+            }
+        }
     };
 
     let config_author = config.author.clone();
@@ -478,7 +521,7 @@ fn main() {
         total_active_repos,
         item_type,
         show_filetypes,
-        show_most_active_day || (!by_categories && !by_projects),
+        show_most_active_day,
         hide_gitnapped_stats,
         matches.get_flag("show-total-stats"),
     );
