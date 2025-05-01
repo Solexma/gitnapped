@@ -89,6 +89,11 @@ fn main() {
             .long("most-active-day")
             .help("Show the most active day")
             .action(clap::ArgAction::SetTrue))
+        .arg(Arg::new("most-active-repos")
+            .long("most-active-repos")
+            .help("How many most active repositories to show")
+            .value_name("MOST_ACTIVE_REPOS_COUNT")
+            .default_value("5"))
         .arg(Arg::new("silent")
             .long("silent")
             .help("Silent mode, no output")
@@ -102,11 +107,6 @@ fn main() {
             .long("ungitnapped")
             .help("Hide gitnapped information from the output")
             .action(clap::ArgAction::SetTrue))
-        .arg(Arg::new("most-active-repos")
-            .long("most-active-repos")
-            .help("How many most active repositories to show")
-            .value_name("MOST_ACTIVE_REPOS_COUNT")
-            .default_value("5"))
         .arg(Arg::new("show-total-stats")
             .long("show-total-stats")
             .help("Show total stats across all analyzed entities")
@@ -518,7 +518,7 @@ fn main() {
         total_active_repos,
         item_type,
         show_filetypes,
-        show_most_active_day || (!by_categories && !by_projects),
+        show_most_active_day,
         hide_gitnapped_stats,
         matches.get_flag("show-total-stats"),
     );
