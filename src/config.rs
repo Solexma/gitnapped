@@ -50,9 +50,10 @@ pub fn load_config(path: &str) -> Result<Config, String> {
 
     match serde_yaml::from_str(&contents) {
         Ok(config) => Ok(config),
-        Err(err) => {
-            Err(format!("Invalid YAML format in config file '{}': {}", path, err))
-        }
+        Err(err) => Err(format!(
+            "Invalid YAML format in config file '{}': {}",
+            path, err
+        )),
     }
 }
 
