@@ -3,7 +3,9 @@
 ![Version](https://img.shields.io/badge/version-0.1.3-blue.svg) [![Crates.io](https://img.shields.io/crates/v/gitnapped)](https://crates.io/crates/gitnapped)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-orange)](https://www.rust-lang.org/)
 
-![Downloads](https://img.shields.io/crates/d/gitnapped) ![License](https://img.shields.io/badge/license-AGPL--3.0-green)
+![Downloads](https://img.shields.io/crates/d/gitnapped) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Solexma/gitnapped/total?label=GH%20downloads)
+
+![License](https://img.shields.io/badge/license-AGPL--3.0-green)
 
 > Find out why you didn't sleep – a Git commit timeline analyzer
 
@@ -80,24 +82,37 @@ gitnapped -d /path/to/repository
 
 ### Configuration
 
-Create a `gitnapped.yaml` file in your working directory or specify a custom path with `-c`:
+Gitnapped can be configured in two ways:
 
-```yaml
-author: "Your Name"
+1. **Using a Config File**
+   Create a `gitnapped.yaml` file in your working directory or specify a custom path with `-c`:
 
-repos:
-  personal:
-    - /path/to/repo1 [Category][Project Name]
-    - /path/to/repo2 [Category][Project Name]
-  
-  clients:
-    - /path/to/client1 [Client][Project Name]
-    
-  opensource:
-    - /path/to/opensource1 [OSS][Project Name]
-```
+   ```yaml
+   author: "Your Name"
 
-Please note that the **author name** will be used to filter the commits.
+   repos:
+     personal:
+       - /path/to/repo1 [Category][Project Name]
+       - /path/to/repo2 [Category][Project Name]
+     
+     clients:
+       - /path/to/client1 [Client][Project Name]
+       
+     opensource:
+       - /path/to/opensource1 [OSS][Project Name]
+   ```
+
+2. **Using Current Directory**
+   If no config file is found, Gitnapped will automatically use the current directory as a repository. This is useful for quick analysis of a single repository without creating a config file.
+
+   Note: The current directory must be a valid Git repository for this fallback to work.
+
+### Default Behavior
+
+- If no config file is specified (`-c`), Gitnapped will look for `gitnapped.yaml` in the current directory
+- If no config file is found, it will use the current directory as a repository
+- If a directory is explicitly specified with `-d`, it will only analyze that directory
+- The **author name** in the config file will be used to filter commits unless overridden by `-a` or `--all-authors`
 
 ### Command Line Options
 
