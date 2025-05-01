@@ -166,10 +166,50 @@ fn main() {
         let config_path = matches
             .get_one::<String>("config")
             .unwrap_or(&default_config);
-        load_config(config_path)
+        
+        // Try to load config, if it doesn't exist, use current directory
+        match load_config(config_path) {
+            Ok(config) => {
+                debug(&format!("Loaded config from {}", config_path));
+                log(&format!("{} {}", "Loaded config from".bright_yellow(), config_path.bright_cyan()));
+                config
+            },
+            Err(_err) => {
+                debug(&format!("Using current directory as fallback"));
+                match push_to_empty_config(".") {
+                    Ok(config) => {
+                        debug(&format!("Loaded empty config"));
+                        log(&format!("{}", "Analyzing current directory".bright_yellow()));
+                        config
+                    },
+                    Err(err) => {
+                        log(&format!(
+                            "{}: {}",
+                            "Error".bright_red(),
+                            err
+                        ));
+                        process::exit(1);
+                    }
+                }
+            }
+        }
     } else {
         debug(&format!("Loading empty config"));
-        push_to_empty_config(&dir)
+        match push_to_empty_config(&dir) {
+            Ok(config) => {
+                debug(&format!("Loaded empty config"));
+                log(&format!("{} {}", "Analyzing directory:".bright_yellow(), dir.bright_cyan()));
+                config
+            },
+            Err(err) => {
+                log(&format!(
+                    "{}: {}",
+                    "Error".bright_red(),
+                    err
+                ));
+                process::exit(1);
+            }
+        }
     };
 
     let config_author = config.author.clone();
