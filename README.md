@@ -1,6 +1,9 @@
 # Gitnapped
 
-![Version](https://img.shields.io/badge/version-0.1.3-blue.svg)
+![Version](https://img.shields.io/badge/version-0.1.3-blue.svg) [![Crates.io](https://img.shields.io/crates/v/gitnapped)](https://crates.io/crates/gitnapped)
+[![Rust Version](https://img.shields.io/badge/rust-1.70%2B-orange)](https://www.rust-lang.org/)
+
+![Downloads](https://img.shields.io/crates/d/gitnapped) ![License](https://img.shields.io/badge/license-AGPL--3.0-green)
 
 > Find out why you didn't sleep – a Git commit timeline analyzer
 
