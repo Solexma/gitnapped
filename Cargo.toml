@@ -17,3 +17,8 @@ colored = "3.0.0"
 askama = "0.14.0"
 tera = "1.20.0"
 regex = "1.11.1"
+
+[package.metadata.deb]
+maintainer = "Marco Orlandin <marco@solexma.com>"
+extended-description = "Find out why you didn't sleep – analyze your Git commits across multiple repos."
+depends = "libc6 (>= 2.29), git"
