@@ -62,8 +62,9 @@ jobs:
             fi
             sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
           else
-            sha256sum target/debian/*.deb > gitnapped-${{ matrix.target }}.deb.sha256
-            sha=$(cat gitnapped-${{ matrix.target }}.deb.sha256 | awk '{print $1}')
+            DEB_FILE=$(ls target/debian/*.deb)
+            sha256sum "$DEB_FILE" > "$DEB_FILE.sha256"
+            sha=$(cat "$DEB_FILE.sha256" | awk '{print $1}')
           fi
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
@@ -78,7 +79,7 @@ jobs:
               gitnapped-${{ matrix.target }}.tar.gz.sha256
             else
               target/debian/*.deb
-              gitnapped-${{ matrix.target }}.deb.sha256
+              target/debian/*.deb.sha256
             fi
 
   create-release:

@@ -12,15 +12,6 @@ on:
       version:
         description: 'Version to update to (e.g., 1.0.0)'
         required: true
-      sha256_x86_64-apple-darwin:
-        description: 'SHA256 for macOS Intel build'
-        required: true
-      sha256_aarch64-apple-darwin:
-        description: 'SHA256 for macOS ARM build'
-        required: true
-      sha256_x86_64-unknown-linux-gnu:
-        description: 'SHA256 for Linux build'
-        required: true
 
 jobs:
   update-brew:
@@ -30,6 +21,13 @@ jobs:
     steps:
       - name: Checkout source repo
         uses: actions/checkout@v4
+
+      - name: Download release artifacts
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: release.yml
+          run_id: ${{ github.event.workflow_run.id }}
+          path: artifacts
 
       - name: Clone homebrew-gitnapped tap
         run: |
@@ -44,18 +42,23 @@ jobs:
           # Update version
           sed -i "s|version \".*\"|version \"$VERSION\"|" Formula/gitnapped.rb
 
+          # Read SHA256s from files
+          SHA256_X86_64_DARWIN=$(cat ../artifacts/gitnapped-x86_64-apple-darwin/gitnapped-x86_64-apple-darwin.tar.gz.sha256 | awk '{print $1}')
+          SHA256_AARCH64_DARWIN=$(cat ../artifacts/gitnapped-aarch64-apple-darwin/gitnapped-aarch64-apple-darwin.tar.gz.sha256 | awk '{print $1}')
+          SHA256_X86_64_LINUX=$(cat ../artifacts/gitnapped-x86_64-unknown-linux-gnu/gitnapped-x86_64-unknown-linux-gnu.tar.gz.sha256 | awk '{print $1}')
+
           # Update URLs and SHA256s for each platform
           # macOS Intel
           sed -i "/if OS.mac? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
-          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_x86_64-apple-darwin || inputs.sha256_x86_64-apple-darwin }}\"|" Formula/gitnapped.rb
+          sed -i "/if OS.mac? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"$SHA256_X86_64_DARWIN\"|" Formula/gitnapped.rb
 
           # macOS ARM
           sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-aarch64-apple-darwin.tar.gz\"|" Formula/gitnapped.rb
-          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_aarch64-apple-darwin || inputs.sha256_aarch64-apple-darwin }}\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.mac? && Hardware::CPU.arm?/,/sha256/s|sha256 \".*\"|sha256 \"$SHA256_AARCH64_DARWIN\"|" Formula/gitnapped.rb
 
           # Linux
           sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/url/s|url \".*\"|url \"https://github.com/solexma/gitnapped/releases/download/v$VERSION/gitnapped-x86_64-unknown-linux-gnu.tar.gz\"|" Formula/gitnapped.rb
-          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"${{ github.event.workflow_run.outputs.sha256_x86_64-unknown-linux-gnu || inputs.sha256_x86_64-unknown-linux-gnu }}\"|" Formula/gitnapped.rb
+          sed -i "/elsif OS.linux? && Hardware::CPU.intel?/,/sha256/s|sha256 \".*\"|sha256 \"$SHA256_X86_64_LINUX\"|" Formula/gitnapped.rb
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
