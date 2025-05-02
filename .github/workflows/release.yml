@@ -45,8 +45,9 @@ jobs:
         run: |
           mkdir -p temp_bin
           cp target/${{ matrix.target }}/release/gitnapped temp_bin/
-          tar czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
-          sha=$(shasum -a 256 gitnapped-${{ matrix.target }}.tar.gz | awk '{print $1}')
+          tar --no-recursion --mtime=@0 --files-from=- -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
+          sha256sum gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
+          sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
           rm -rf temp_bin
@@ -54,7 +55,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gitnapped-${{ matrix.target }}
-          path: gitnapped-${{ matrix.target }}.tar.gz
+          path: |
+            gitnapped-${{ matrix.target }}.tar.gz
+            gitnapped-${{ matrix.target }}.tar.gz.sha256
 
   create-deb:
     name: Create Debian Package
