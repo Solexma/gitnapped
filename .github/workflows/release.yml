@@ -28,13 +28,11 @@ jobs:
             target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - os: ubuntu-latest
-            target: amd64
+            build_deb: true
     outputs:
       sha256_x86_64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_x86_64-apple-darwin }}
       sha256_aarch64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_aarch64-apple-darwin }}
       sha256_x86_64-unknown-linux-gnu: ${{ steps.calculate-sha.outputs.sha256_x86_64-unknown-linux-gnu }}
-      sha256_amd64: ${{ steps.calculate-sha.outputs.sha256_amd64 }}
 
     steps:
       - uses: actions/checkout@v4
@@ -42,10 +40,10 @@ jobs:
         with:
           target: ${{ matrix.target }}
       - name: Install cargo-deb
-        run: if [[ "${{ matrix.target }}" == "amd64" ]]; then cargo install cargo-deb; fi
+        run: if [[ "${{ matrix.build_deb }}" == "true" ]]; then cargo install cargo-deb; fi
       - name: Build
         run: |
-          if [[ "${{ matrix.target }}" == "amd64" ]]; then
+          if [[ "${{ matrix.build_deb }}" == "true" ]]; then
             cargo deb
           else
             cargo build --release --target ${{ matrix.target }}
@@ -53,7 +51,7 @@ jobs:
       - name: Create tarball and calculate SHA256
         id: calculate-sha
         run: |
-          if [[ "${{ matrix.target }}" != "amd64" ]]; then
+          if [[ "${{ matrix.build_deb }}" != "true" ]]; then
             mkdir -p temp_bin
             cp target/${{ matrix.target }}/release/gitnapped temp_bin/
             tar -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
@@ -64,7 +62,7 @@ jobs:
             fi
             sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
           else
-            sha256sum gitnapped-${{ matrix.target }}.deb > gitnapped-${{ matrix.target }}.deb.sha256
+            sha256sum target/debian/*.deb > gitnapped-${{ matrix.target }}.deb.sha256
             sha=$(cat gitnapped-${{ matrix.target }}.deb.sha256 | awk '{print $1}')
           fi
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
@@ -75,11 +73,11 @@ jobs:
         with:
           name: gitnapped-${{ matrix.target }}
           path: |
-            if [[ "${{ matrix.target }}" != "amd64" ]]; then
+            if [[ "${{ matrix.build_deb }}" != "true" ]]; then
               gitnapped-${{ matrix.target }}.tar.gz
               gitnapped-${{ matrix.target }}.tar.gz.sha256
             else
-              gitnapped-${{ matrix.target }}.deb
+              target/debian/*.deb
               gitnapped-${{ matrix.target }}.deb.sha256
             fi
 
