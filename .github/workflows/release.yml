@@ -28,26 +28,45 @@ jobs:
             target: aarch64-apple-darwin
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - os: ubuntu-latest
+            target: amd64
     outputs:
       sha256_x86_64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_x86_64-apple-darwin }}
       sha256_aarch64-apple-darwin: ${{ steps.calculate-sha.outputs.sha256_aarch64-apple-darwin }}
       sha256_x86_64-unknown-linux-gnu: ${{ steps.calculate-sha.outputs.sha256_x86_64-unknown-linux-gnu }}
+      sha256_amd64: ${{ steps.calculate-sha.outputs.sha256_amd64 }}
 
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: ${{ matrix.target }}
+      - name: Install cargo-deb
+        run: if [[ "${{ matrix.target }}" == "amd64" ]]; then cargo install cargo-deb; fi
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          if [[ "${{ matrix.target }}" == "amd64" ]]; then
+            cargo deb
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
       - name: Create tarball and calculate SHA256
         id: calculate-sha
         run: |
-          mkdir -p temp_bin
-          cp target/${{ matrix.target }}/release/gitnapped temp_bin/
-          tar -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
-          sha256sum gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
-          sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
+          if [[ "${{ matrix.target }}" != "amd64" ]]; then
+            mkdir -p temp_bin
+            cp target/${{ matrix.target }}/release/gitnapped temp_bin/
+            tar -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
+            if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+              sha256sum gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
+            else
+              shasum -a 256 gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
+            fi
+            sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
+          else
+            sha256sum gitnapped-${{ matrix.target }}.deb > gitnapped-${{ matrix.target }}.deb.sha256
+            sha=$(cat gitnapped-${{ matrix.target }}.deb.sha256 | awk '{print $1}')
+          fi
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
           echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
           rm -rf temp_bin
@@ -56,29 +75,17 @@ jobs:
         with:
           name: gitnapped-${{ matrix.target }}
           path: |
-            gitnapped-${{ matrix.target }}.tar.gz
-            gitnapped-${{ matrix.target }}.tar.gz.sha256
-
-  create-deb:
-    name: Create Debian Package
-    needs: build-binaries
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install cargo-deb
-        run: cargo install cargo-deb
-      - name: Create Debian package
-        run: cargo deb
-      - name: Upload Debian package
-        uses: actions/upload-artifact@v4
-        with:
-          name: gitnapped-deb
-          path: target/debian/*.deb
+            if [[ "${{ matrix.target }}" != "amd64" ]]; then
+              gitnapped-${{ matrix.target }}.tar.gz
+              gitnapped-${{ matrix.target }}.tar.gz.sha256
+            else
+              gitnapped-${{ matrix.target }}.deb
+              gitnapped-${{ matrix.target }}.deb.sha256
+            fi
 
   create-release:
     name: Create GitHub Release
-    needs: [build-binaries, create-deb]
+    needs: [build-binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
