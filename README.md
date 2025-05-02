@@ -1,6 +1,6 @@
 # Gitnapped
 
-![Version](https://img.shields.io/badge/version-0.1.3-blue.svg) [![Crates.io](https://img.shields.io/crates/v/gitnapped)](https://crates.io/crates/gitnapped)
+![Version](https://img.shields.io/badge/version-0.1.4-blue.svg) [![Crates.io](https://img.shields.io/crates/v/gitnapped)](https://crates.io/crates/gitnapped)
 [![Rust Version](https://img.shields.io/badge/rust-1.70%2B-orange)](https://www.rust-lang.org/)
 
 ![Downloads](https://img.shields.io/crates/d/gitnapped) ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/Solexma/gitnapped/total?label=GH%20downloads)
