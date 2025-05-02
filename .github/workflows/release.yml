@@ -45,13 +45,29 @@ jobs:
         run: |
           if [[ "${{ matrix.build_deb }}" == "true" ]]; then
             cargo deb
+            cargo build --release --target ${{ matrix.target }}
           else
             cargo build --release --target ${{ matrix.target }}
           fi
       - name: Create tarball and calculate SHA256
         id: calculate-sha
         run: |
-          if [[ "${{ matrix.build_deb }}" != "true" ]]; then
+          if [[ "${{ matrix.build_deb }}" == "true" ]]; then
+            # Create both .deb and .tar.gz for Linux
+            DEB_FILE=$(ls target/debian/*.deb)
+            sha256sum "$DEB_FILE" > "$DEB_FILE.sha256"
+            sha_deb=$(cat "$DEB_FILE.sha256" | awk '{print $1}')
+            
+            mkdir -p temp_bin
+            cp target/${{ matrix.target }}/release/gitnapped temp_bin/
+            tar -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
+            sha256sum gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
+            sha_tar=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
+            
+            echo "sha256_${{ matrix.target }}=$sha_tar" >> $GITHUB_ENV
+            echo "sha256_${{ matrix.target }}=$sha_tar" >> $GITHUB_OUTPUT
+            rm -rf temp_bin
+          else
             mkdir -p temp_bin
             cp target/${{ matrix.target }}/release/gitnapped temp_bin/
             tar -czf gitnapped-${{ matrix.target }}.tar.gz -C temp_bin gitnapped
@@ -61,25 +77,23 @@ jobs:
               shasum -a 256 gitnapped-${{ matrix.target }}.tar.gz > gitnapped-${{ matrix.target }}.tar.gz.sha256
             fi
             sha=$(cat gitnapped-${{ matrix.target }}.tar.gz.sha256 | awk '{print $1}')
-          else
-            DEB_FILE=$(ls target/debian/*.deb)
-            sha256sum "$DEB_FILE" > "$DEB_FILE.sha256"
-            sha=$(cat "$DEB_FILE.sha256" | awk '{print $1}')
+            echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
+            echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
+            rm -rf temp_bin
           fi
-          echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_ENV
-          echo "sha256_${{ matrix.target }}=$sha" >> $GITHUB_OUTPUT
-          rm -rf temp_bin
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: gitnapped-${{ matrix.target }}
           path: |
-            if [[ "${{ matrix.build_deb }}" != "true" ]]; then
+            if [[ "${{ matrix.build_deb }}" == "true" ]]; then
               gitnapped-${{ matrix.target }}.tar.gz
               gitnapped-${{ matrix.target }}.tar.gz.sha256
-            else
               target/debian/*.deb
               target/debian/*.deb.sha256
+            else
+              gitnapped-${{ matrix.target }}.tar.gz
+              gitnapped-${{ matrix.target }}.tar.gz.sha256
             fi
 
   create-release:
